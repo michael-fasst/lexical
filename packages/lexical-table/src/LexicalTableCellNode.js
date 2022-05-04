@@ -37,6 +37,7 @@ export type TableCellHeaderState = $Values<typeof TableCellHeaderStates>;
 export class TableCellNode extends GridCellNode {
   __headerState: TableCellHeaderState;
   __width: ?number;
+  __backgroundColorStyle: ?string;
 
   static getType(): 'tablecell' {
     return 'tablecell';
@@ -48,6 +49,7 @@ export class TableCellNode extends GridCellNode {
       node.__colSpan,
       node.__width,
       node.__key,
+      node.__backgroundColorStyle,
     );
   }
 
@@ -68,18 +70,29 @@ export class TableCellNode extends GridCellNode {
     headerState?: TableCellHeaderState = TableCellHeaderStates.NO_STATUS,
     colSpan?: number = 1,
     width?: ?number,
+    backgroundColorStyle?: ?string,
+    borderStyle?: ?string,
     key?: NodeKey,
   ): void {
     super(colSpan, key);
     this.__headerState = headerState;
     this.__width = width;
+    this.__backgroundColorStyle = backgroundColorStyle;
+    this.__borderStyle = borderStyle;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = document.createElement(this.getTag());
+    console.log('borderstyle test tavu', this.__borderStyle);
 
     if (this.__width) {
       element.style.width = `${this.__width}px`;
+    }
+    if (this.__bg) {
+      element.style.backgroundColor = `${this.__backgroundColorStyle}`;
+    }
+    if (this.__borderStyle) {
+      element.style.border = `${this.__borderStyle}`;
     }
 
     addClassNamesToElement(
@@ -133,6 +146,16 @@ export class TableCellNode extends GridCellNode {
     const self = this.getWritable();
     self.__width = width;
     return this.__width;
+  }
+  setBg(backgroundColorStyle: string): ?string {
+    const self = this.getWritable();
+    self.__backgroundColorStyle = backgroundColorStyle;
+    return this.backgroundColorStyle;
+  }
+  setBorderStyle(borderStyle: string): ?string {
+    const self = this.getWritable();
+    self.__borderStyle = borderStyle;
+    return this.borderStyle;
   }
 
   getWidth(): ?number {
@@ -215,9 +238,17 @@ export function convertTableCellNodeElement(
 export function $createTableCellNode(
   headerState: TableCellHeaderState,
   colSpan?: number = 1,
+  backgroundColorStyle?: ?string,
+  borderStyle?: ?string,
   width?: ?number,
 ): TableCellNode {
-  return new TableCellNode(headerState, colSpan, width);
+  return new TableCellNode(
+    headerState,
+    colSpan,
+    width,
+    backgroundColorStyle,
+    borderStyle,
+  );
 }
 
 export function $isTableCellNode(node: ?LexicalNode): boolean %checks {

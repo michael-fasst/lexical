@@ -43,7 +43,12 @@ export default function TablePlugin(): React$Node {
     return editor.registerCommand(
       INSERT_TABLE_COMMAND,
       (payload) => {
-        const {columns, rows} = payload;
+        const {
+          columns,
+          rows,
+          backgroundColorStyle,
+          borderTableStyle
+        } = payload;
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) {
           return true;
@@ -55,7 +60,10 @@ export default function TablePlugin(): React$Node {
           const tableNode = $createTableNodeWithDimensions(
             Number(rows),
             Number(columns),
+            backgroundColorStyle,
+            borderTableStyle
           );
+
           if ($isRootNode(focusNode)) {
             const target = focusNode.getChildAtIndex(focus.offset);
             if (target !== null) {

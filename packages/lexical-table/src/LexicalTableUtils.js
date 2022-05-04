@@ -29,9 +29,11 @@ import {
 export function $createTableNodeWithDimensions(
   rowCount: number,
   columnCount: number,
+  backgroundColorStyle: string,
+  borderTableStyle: string,
   includeHeaders?: boolean = true,
 ): TableNode {
-  const tableNode = $createTableNode();
+  const tableNode = $createTableNode(backgroundColorStyle, borderTableStyle);
 
   for (let iRow = 0; iRow < rowCount; iRow++) {
     const tableRowNode = $createTableRowNode();

@@ -444,9 +444,23 @@ function InsertTableDialog({
 }): React$Node {
   const [rows, setRows] = useState('5');
   const [columns, setColumns] = useState('5');
+  const [backgroundColorStyle, setBackgroundColorStyle] = useState('white');
+  const [borderTableStyle, setBorderTableStyle] = useState('');
+  const [borderColorStyle, setBorderColorStyle] = useState('black');
+  const [borderWidth, setBorderWidth] = useState('1');
+  const [borderStyle, setBorderStyle] = useState('solid');
+
+  useEffect(() => {
+    setBorderTableStyle(`${borderWidth}px ${borderStyle} ${borderColorStyle}`);
+  }, [borderWidth, borderStyle, borderColorStyle]);
 
   const onClick = () => {
-    activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {columns, rows});
+    activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {
+      backgroundColorStyle,
+      borderTableStyle,
+      columns,
+      rows,
+    });
     onClose();
   };
 
@@ -454,6 +468,45 @@ function InsertTableDialog({
     <>
       <TextInput label="No of rows" onChange={setRows} value={rows} />
       <TextInput label="No of columns" onChange={setColumns} value={columns} />
+      <TextInput
+        label="Background Color"
+        onChange={setBackgroundColorStyle}
+        value={backgroundColorStyle}
+      />
+      <TextInput
+        label="Border Color"
+        onChange={setBorderColorStyle}
+        value={borderColorStyle}
+      />
+      <TextInput
+        label="Border thickness"
+        onChange={setBorderWidth}
+        value={borderWidth}
+      />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}>
+        <p>Border Style</p>
+        <select
+          id="Border Style"
+          name="Border Style"
+          style={{align: 'center', height: '50%', width: '50%'}}
+          value={borderStyle}
+          onChange={(e) => setBorderStyle(e.target.value)}>
+          <option value="none">none</option>
+          <option value="dotted">dotted</option>
+          <option value="inset">inset</option>
+          <option value="solid">solid</option>
+          <option value="double">double</option>
+          <option value="groove">groove</option>
+          <option value="ridge">ridge</option>
+          <option value="outset">outset</option>
+          <option value="mix">mix</option>
+        </select>
+      </div>
       <div
         className="ToolbarPlugin__dialogActions"
         data-test-id="table-model-confirm-insert">

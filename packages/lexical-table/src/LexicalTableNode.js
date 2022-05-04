@@ -29,13 +29,14 @@ import {getTableGrid} from './LexicalTableSelectionHelpers';
 
 export class TableNode extends GridNode {
   __grid: ?Grid;
+  __backgroundColorStyle: ?string;
 
   static getType(): 'table' {
     return 'table';
   }
 
   static clone(node: TableNode): TableNode {
-    return new TableNode(node.__key);
+    return new TableNode(node.__key, node.__backgroundColorStyle);
   }
 
   static importDOM(): DOMConversionMap | null {
@@ -47,12 +48,25 @@ export class TableNode extends GridNode {
     };
   }
 
-  constructor(key?: NodeKey): void {
+  constructor(
+    key?: NodeKey,
+    backgroundColorStyle?: ?string,
+    borderTableStyle?: ?string,
+  ): void {
     super(key);
+    this.__backgroundColorStyle = backgroundColorStyle;
+    this.__borderTableStyle = borderTableStyle;
   }
 
   createDOM(config: EditorConfig, editor: LexicalEditor): HTMLElement {
     const tableElement = document.createElement('table');
+
+    if (this.__backgroundColorStyle) {
+      tableElement.style.backgroundColor = `${this.__backgroundColorStyle}`;
+    }
+    if (this.__borderTableStyle) {
+      tableElement.style.border = `${this.__borderTableStyle}`;
+    }
 
     addClassNamesToElement(tableElement, config.theme.table);
 
@@ -180,6 +194,18 @@ export class TableNode extends GridNode {
     return node;
   }
 
+  setBg(backgroundColorStyle: string): ?string {
+    const self = this.getWritable();
+    self.__backgroundColorStyle = backgroundColorStyle;
+    return this.backgroundColorStyle;
+  }
+
+  setBorderTableStyle(borderTableStyle: string): ?string {
+    const self = this.getWritable();
+    self.__borderTableStyle = borderTableStyle;
+    return this.borderTableStyle;
+  }
+
   canSelectBefore(): true {
     return true;
   }
@@ -206,8 +232,11 @@ export function convertTableElement(domNode: Node): DOMConversionOutput {
   return {node: $createTableNode()};
 }
 
-export function $createTableNode(): TableNode {
-  return new TableNode();
+export function $createTableNode(
+  backgroundColorStyle?: ?string,
+  borderTableStyle?: ?string,
+): TableNode {
+  return new TableNode(null, backgroundColorStyle, borderTableStyle);
 }
 
 export function $isTableNode(node: ?LexicalNode): boolean %checks {

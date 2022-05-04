@@ -90,9 +90,14 @@ export declare class TableNode extends ElementNode {
   getCellNodeFromCordsOrThrow(x: number, y: number): TableCellNode;
   setGrid(grid?: Grid): TableNode;
   getGrid(): Grid | null;
+  setBg(backgroundColorStyle: string): ?string;
+  setBorderStyle(borderStyle: string): ?string;
   canSelectBefore(): true;
 }
-declare function $createTableNode(): TableNode;
+declare function $createTableNode(
+  backgroundColorStyle: string,
+  borderTableStyle: string,
+): TableNode;
 declare function $isTableNode(node?: LexicalNode): node is TableNode;
 
 /**
@@ -109,6 +114,7 @@ declare class TableRowNode extends ElementNode {
     selection: RangeSelection,
   ): null | ParagraphNode | TableRowNode;
   setHeight(height: number): ?number;
+  setBorderTableStyle(borderTableStyle: string): ?string;
   getHeight(): ?number;
   collapseAtStart(): true;
 }
@@ -132,6 +138,8 @@ export type Grid = {
   cells: Cells;
   columns: number;
   rows: number;
+  backgroundColorStyle: string;
+  borderTableStyle: string;
 };
 
 declare function applyTableHandlers(
@@ -158,6 +166,8 @@ declare function getCellFromTarget(node: Node): Cell | null;
 declare function $createTableNodeWithDimensions(
   rowCount: number,
   columnCount: number,
+  backgroundColorStyle: string,
+  borderTableStyle: string,
   includeHeaders?: boolean,
 ): TableNode;
 
@@ -235,4 +245,6 @@ export declare class TableSelection {
 export var INSERT_TABLE_COMMAND: LexicalCommand<{
   rows: string;
   columns: string;
+  backgroundColorStyle: string;
+  borderTableStyle: string;
 }>;
