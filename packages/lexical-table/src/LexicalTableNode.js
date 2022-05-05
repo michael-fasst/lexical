@@ -194,7 +194,8 @@ export class TableNode extends GridNode {
     return node;
   }
 
-  setBg(backgroundColorStyle: string): ?string {
+  setBackgroundColor(backgroundColorStyle: string): ?string {
+    console.log('setBackgroundColor', backgroundColorStyle);
     const self = this.getWritable();
     self.__backgroundColorStyle = backgroundColorStyle;
     return this.backgroundColorStyle;

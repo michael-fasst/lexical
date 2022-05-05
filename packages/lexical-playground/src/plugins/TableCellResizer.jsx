@@ -187,6 +187,7 @@ function TableCellResizer({editor}: {editor: LexicalEditor}): React$Node {
         }
 
         const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+        tableNode.setBackgroundColor('red');
 
         const tableColumnIndex =
           $getTableColumnIndexFromTableCellNode(tableCellNode);
@@ -213,6 +214,7 @@ function TableCellResizer({editor}: {editor: LexicalEditor}): React$Node {
           }
 
           tableCell.setWidth(newWidth);
+          tableCell.mergeCellRight('2');
         }
       });
     },

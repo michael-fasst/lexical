@@ -124,6 +124,7 @@ function TableActionMenu({
     editor.update(() => {
       if (tableCellNode.isAttached()) {
         const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+
         const tableElement = editor.getElementByKey(tableNode.getKey());
 
         if (!tableElement) {
@@ -326,6 +327,20 @@ function TableActionMenu({
     [editor, tableCellNode, clearTableSelection, onClose],
   );
 
+  const mergeRightCell = useCallback(() => {
+    editor.update(() => {
+      const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+      tableNode.mergeCellRight(tableCellNode);
+      tableCell.
+      
+
+      // $deleteTableColumn(tableNode, tableColumnIndex);
+
+      // clearTableSelection();
+      onClose();
+    });
+  }, [editor, tableCellNode, clearTableSelection, onClose]);
+
   return createPortal(
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
@@ -347,6 +362,10 @@ function TableActionMenu({
           {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
           below
         </span>
+      </button>
+      <hr />
+      <button className="item" onClick={() => mergeRightCell(true)}>
+        <span className="text">MergeCell right</span>
       </button>
       <hr />
       <button

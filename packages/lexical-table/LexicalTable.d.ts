@@ -61,6 +61,7 @@ export declare class TableCellNode extends ElementNode {
   toggleHeaderState(headerState: TableCellHeaderState): TableCellNode;
   hasHeader(): boolean;
   setWidth(width: number): ?number;
+  mergeCellRight(cell: string): ?string;
   getWidth(): ?number;
   updateDOM(prevNode: TableCellNode): boolean;
   collapseAtStart(): true;
@@ -90,7 +91,7 @@ export declare class TableNode extends ElementNode {
   getCellNodeFromCordsOrThrow(x: number, y: number): TableCellNode;
   setGrid(grid?: Grid): TableNode;
   getGrid(): Grid | null;
-  setBg(backgroundColorStyle: string): ?string;
+  setBackgroundColor(backgroundColorStyle: string): ?string;
   setBorderStyle(borderStyle: string): ?string;
   canSelectBefore(): true;
 }

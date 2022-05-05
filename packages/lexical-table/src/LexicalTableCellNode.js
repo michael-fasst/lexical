@@ -38,6 +38,7 @@ export class TableCellNode extends GridCellNode {
   __headerState: TableCellHeaderState;
   __width: ?number;
   __backgroundColorStyle: ?string;
+  __cell: ?TableCell;
 
   static getType(): 'tablecell' {
     return 'tablecell';
@@ -50,6 +51,7 @@ export class TableCellNode extends GridCellNode {
       node.__width,
       node.__key,
       node.__backgroundColorStyle,
+      node.__cell,
     );
   }
 
@@ -72,6 +74,7 @@ export class TableCellNode extends GridCellNode {
     width?: ?number,
     backgroundColorStyle?: ?string,
     borderStyle?: ?string,
+    cell?: ?TableCell,
     key?: NodeKey,
   ): void {
     super(colSpan, key);
@@ -79,21 +82,27 @@ export class TableCellNode extends GridCellNode {
     this.__width = width;
     this.__backgroundColorStyle = backgroundColorStyle;
     this.__borderStyle = borderStyle;
+    this.__cell = cell;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = document.createElement(this.getTag());
-    console.log('borderstyle test tavu', this.__borderStyle);
 
     if (this.__width) {
       element.style.width = `${this.__width}px`;
     }
-    if (this.__bg) {
-      element.style.backgroundColor = `${this.__backgroundColorStyle}`;
+
+    if (this.__cell) {
+      console.log('cell', this.__cell);
+      console.log('colSpan', this.__colSpan);
+      element.setAttribute('rowspan', '2');
     }
-    if (this.__borderStyle) {
-      element.style.border = `${this.__borderStyle}`;
-    }
+    // if (this.__bg) {
+    //   element.style.backgroundColor = `${this.__backgroundColorStyle}`;
+    // }
+    // if (this.__borderStyle) {
+    //   element.style.border = `${this.__borderStyle}`;
+    // }
 
     addClassNamesToElement(
       element,
@@ -147,15 +156,20 @@ export class TableCellNode extends GridCellNode {
     self.__width = width;
     return this.__width;
   }
-  setBg(backgroundColorStyle: string): ?string {
+  // setBackgroundColor(backgroundColorStyle: string): ?string {
+  //   const self = this.getWritable();
+  //   self.__backgroundColorStyle = backgroundColorStyle;
+  //   return this.backgroundColorStyle;
+  // }
+  // setBorderStyle(borderStyle: string): ?string {
+  //   const self = this.getWritable();
+  //   self.__borderStyle = borderStyle;
+  //   return this.borderStyle;
+  // }
+  mergeCellRight(cell: string): ?string {
     const self = this.getWritable();
-    self.__backgroundColorStyle = backgroundColorStyle;
-    return this.backgroundColorStyle;
-  }
-  setBorderStyle(borderStyle: string): ?string {
-    const self = this.getWritable();
-    self.__borderStyle = borderStyle;
-    return this.borderStyle;
+    self.__cell = cell;
+    return this.cell;
   }
 
   getWidth(): ?number {
@@ -241,6 +255,7 @@ export function $createTableCellNode(
   backgroundColorStyle?: ?string,
   borderStyle?: ?string,
   width?: ?number,
+  cell?: ?string,
 ): TableCellNode {
   return new TableCellNode(
     headerState,
@@ -248,6 +263,7 @@ export function $createTableCellNode(
     width,
     backgroundColorStyle,
     borderStyle,
+    cell,
   );
 }
 
