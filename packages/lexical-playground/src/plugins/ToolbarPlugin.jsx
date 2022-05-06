@@ -1356,3 +1356,168 @@ export default function ToolbarPlugin(): React$Node {
     </div>
   );
 }
+
+// const [cellBackgroundColor, setCellBackgroundColor] = useState('white');
+// const [cellBorderColor, setCellBorderColor] = useState('black');
+// const [cellBorderStyle, setCellBorderStyle] = useState('solid');
+// const [cellBorderWidth, setCellBorderWidth] = useState('1');
+
+// const [cellBorderTopColor, setCellBorderTopColor] = useState('black');
+// const [cellBorderTopStyle, setCellBorderTopStyle] = useState('solid');
+// const [cellBorderTopWidth, setCellBorderTopWidth] = useState('1');
+
+// const [cellBorderBottomColor, setCellBorderBottomColor] = useState('black');
+// const [cellBorderBottomStyle, setCellBorderBottomStyle] = useState('solid');
+// const [cellBorderBottomWidth, setCellBorderBottomWidth] = useState('1');
+
+// const [cellBorderLeftColor, setCellBorderLeftColor] = useState('black');
+// const [cellBorderLeftStyle, setCellBorderLeftStyle] = useState('solid');
+// const [cellBorderLeftWidth, setCellBorderLeftWidth] = useState('1');
+
+// const [cellBorderRightColor, setCellBorderRightColor] = useState('black');
+// const [cellBorderRightStyle, setCellBorderRightStyle] = useState('solid');
+// const [cellBorderRightWidth, setCellBorderRightWidth] = useState('1');
+
+// const [cellBorderRadius, setCellBorderRadius] = useState('0');
+// const [cellBorderRadiusTopLeft, setCellBorderRadiusTopLeft] = useState('0');
+// const [cellBorderRadiusTopRight, setCellBorderRadiusTopRight] = useState('0');
+// const [cellBorderRadiusBottomLeft, setCellBorderRadiusBottomLeft] = useState('0');
+// const [cellBorderRadiusBottomRight, setCellBorderRadiusBottomRight] = useState('0');
+
+// const [cellPadding, setCellPadding] = useState('0');
+// const [cellPaddingTop, setCellPaddingTop] = useState('0');
+// const [cellPaddingBottom, setCellPaddingBottom] = useState('0');
+// const [cellPaddingLeft, setCellPaddingLeft] = useState('0');
+// const [cellPaddingRight, setCellPaddingRight] = useState('0');
+
+// const [cellMargin, setCellMargin] = useState('0');
+// const [cellMarginTop, setCellMarginTop] = useState('0');
+// const [cellMarginBottom, setCellMarginBottom] = useState('0');
+// const [cellMarginLeft, setCellMarginLeft] = useState('0');
+// const [cellMarginRight, setCellMarginRight] = useState('0');
+
+// const [cellStyle, setCellStyle] = useState(
+//   `${cellBorderWidth}px ${cellBorderStyle} ${cellBorderColor}`,
+// );
+// const [topBorderCellStyle, setTopBorderCellStyle] = useState(`${cellBorderTopWidth}px ${cellBorderTopStyle} ${cellBorderTopColor}`);
+// const [bottomBorderCellStyle, setBottomBorderCellStyle] = useState('')
+// const [leftBorderCellStyle, setLeftBorderCellStyle] = useState('')
+// const [rightBorderCellStyle, setRightBorderCellStyle] = useState('')
+// useEffect(() => {
+//   setCellStyle(`${cellBorderWidth}px ${cellBorderStyle} ${cellBorderColor}`);
+// }, [cellBorderWidth, cellBorderStyle, cellBorderColor]);
+
+// return createPortal(
+//   // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+//   <div
+//     className="dropdown"
+//     ref={dropDownRef}
+//     onClick={(e) => {
+//       e.stopPropagation();
+//     }}>
+//     <button className="item" onClick={() => insertTableRowAtSelection(false)}>
+//       <span className="text">
+//         Insert{' '}
+//         {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
+//         above
+//       </span>
+//     </button>
+//     <button className="item" onClick={() => insertTableRowAtSelection(true)}>
+//       <span className="text">
+//         Insert{' '}
+//         {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
+//         below
+//       </span>
+//     </button>
+//     <hr />
+//     <button className="item" onClick={() => mergeRightCell(true)}>
+//       <span className="text">
+//         MergeCell right avec des bordures JAUNES DOTTES DE 3 px et un fond
+//         rouge
+//       </span>
+//     </button>
+//     <hr />
+//     <div>
+//       <TextInput
+//         label="Background Color"
+//         onChange={setCellBackgroundColor}
+//         value={cellBackgroundColor}
+//       />
+//       <TextInput
+//         label="Border Color"
+//         onChange={setCellBorderColor}
+//         value={cellBorderColor}
+//       />
+//       <TextInput
+//         label="Border thickness"
+//         onChange={setCellBorderWidth}
+//         value={cellBorderWidth}
+//       />
+//       <div
+//         style={{
+//           display: 'flex',
+//           justifyContent: 'space-between',
+//           width: '100%',
+//         }}>
+//         <p>Border Style</p>
+//         <select
+//           id="Border Style"
+//           name="Border Style"
+//           style={{align: 'center', height: '50%', width: '50%'}}
+//           value={cellBorderStyle}
+//           onChange={(e) => setCellBorderStyle(e.target.value)}>
+//           <option value="none">none</option>
+//           <option value="dotted">dotted</option>
+//           <option value="inset">inset</option>
+//           <option value="solid">solid</option>
+//           <option value="double">double</option>
+//           <option value="groove">groove</option>
+//           <option value="ridge">ridge</option>
+//           <option value="outset">outset</option>
+//           <option value="mix">mix</option>
+//         </select>
+//       </div>
+//     <hr />
+//     <div>
+//       <TextInput
+//         label="Border Top Color"
+//         onChange={setCellBorderTopColor}
+//         value={cellBorderTopColor}
+//       />
+//       <TextInput
+//         label="Border top width"
+//         onChange={setCellBorderTopWidth}
+//         value={cellBorderTopWidth}
+//       />
+//       <div
+//         style={{
+//           display: 'flex',
+//           justifyContent: 'space-between',
+//           width: '100%',
+//         }}>
+//         <p>Border Top Style</p>
+//         <select
+//           id="Border Top Style"
+//           name="Border Top Style"
+//           style={{align: 'center', height: '50%', width: '50%'}}
+//           value={cellBorderTopStyle}
+//           onChange={(e) => setCellBorderTopStyle(e.target.value)}>
+//           <option value="none">none</option>
+//           <option value="dotted">dotted</option>
+//           <option value="inset">inset</option>
+//           <option value="solid">solid</option>
+//           <option value="double">double</option>
+//           <option value="groove">groove</option>
+//           <option value="ridge">ridge</option>
+//           <option value="outset">outset</option>
+//           <option value="mix">mix</option>
+//         </select>
+//       </div>
+
+//       <button
+//         className="item"
+//         onClick={() => styleCellOptions(cellStyle, cellBackgroundColor, topBorderCellStyle)}>
+//         <span className="text">Set cell option</span>
+//       </button>
+//     </div>
+//     <hr />

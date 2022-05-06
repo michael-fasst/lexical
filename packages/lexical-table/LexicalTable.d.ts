@@ -61,6 +61,7 @@ export declare class TableCellNode extends ElementNode {
   toggleHeaderState(headerState: TableCellHeaderState): TableCellNode;
   hasHeader(): boolean;
   setWidth(width: number): ?number;
+  setBackgroundColor(backgroundColorStyle: string): ?string;
   mergeCellRight(cell: string): ?string;
   getWidth(): ?number;
   updateDOM(prevNode: TableCellNode): boolean;
@@ -191,6 +192,10 @@ declare function $getTableRowIndexFromTableCellNode(
 declare function $getTableColumnIndexFromTableCellNode(
   tableCellNode: TableCellNode,
 ): number;
+
+declare function $getTableCellSiblingsFromTableCellNode(
+  tableCellNode: TableCellNode,
+): TableCellNode;
 
 declare function $removeTableRowAtIndex(
   tableNode: TableNode,

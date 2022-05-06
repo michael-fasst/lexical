@@ -93,13 +93,12 @@ export class TableCellNode extends GridCellNode {
     }
 
     if (this.__cell) {
-      console.log('cell', this.__cell);
-      console.log('colSpan', this.__colSpan);
-      element.setAttribute('rowspan', '2');
+      console.log('setATt', this.__cell);
+      element.setAttribute('rowspan', this.__cell);
     }
-    // if (this.__bg) {
-    //   element.style.backgroundColor = `${this.__backgroundColorStyle}`;
-    // }
+    if (this.__backgroundColorStyle) {
+      element.style.backgroundColor = `${this.__backgroundColorStyle}`;
+    }
     // if (this.__borderStyle) {
     //   element.style.border = `${this.__borderStyle}`;
     // }
@@ -156,11 +155,11 @@ export class TableCellNode extends GridCellNode {
     self.__width = width;
     return this.__width;
   }
-  // setBackgroundColor(backgroundColorStyle: string): ?string {
-  //   const self = this.getWritable();
-  //   self.__backgroundColorStyle = backgroundColorStyle;
-  //   return this.backgroundColorStyle;
-  // }
+  setBackgroundColor(backgroundColorStyle: string): ?string {
+    const self = this.getWritable();
+    self.__backgroundColorStyle = backgroundColorStyle;
+    return this.backgroundColorStyle;
+  }
   // setBorderStyle(borderStyle: string): ?string {
   //   const self = this.getWritable();
   //   self.__borderStyle = borderStyle;
