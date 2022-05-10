@@ -7,7 +7,12 @@
  * @flow strict
  */
 
-import type {EditorConfig, LexicalNode, NodeKey} from 'lexical';
+import type {
+  DOMExportOutput,
+  EditorConfig,
+  LexicalNode,
+  NodeKey,
+} from 'lexical';
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {mergeRegister} from '@lexical/utils';
@@ -128,6 +133,12 @@ export class EquationNode extends DecoratorNode<React$Node> {
     this.__inline = inline ?? false;
   }
 
+  exportDOM(): DOMExportOutput {
+    const element = document.createElement(this.__inline ? 'span' : 'div');
+    element.innerText = this.__equation;
+    return {element};
+  }
+
   createDOM(config: EditorConfig): HTMLElement {
     return document.createElement(this.__inline ? 'span' : 'div');
   }
@@ -135,6 +146,10 @@ export class EquationNode extends DecoratorNode<React$Node> {
   updateDOM(prevNode: EquationNode): boolean {
     // If the inline property changes, replace the element
     return this.__inline !== prevNode.__inline;
+  }
+
+  getEquation(): string {
+    return this.__equation;
   }
 
   setEquation(equation: string): void {

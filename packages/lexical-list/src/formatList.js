@@ -8,7 +8,8 @@
  */
 
 import type {ListNode} from './';
-import type {ElementNode, LexicalEditor} from 'lexical';
+import type {ListType} from './LexicalListNode';
+import type {ElementNode, LexicalEditor, LexicalNode} from 'lexical';
 
 import {$getNearestNodeOfType} from '@lexical/utils';
 import {
@@ -38,7 +39,45 @@ import {
   isNestedListNode,
 } from './utils';
 
-export function insertList(editor: LexicalEditor, listType: 'ul' | 'ol'): void {
+function $isSelectingEmptyListItem(
+  anchorNode: LexicalNode,
+  nodes: Array<LexicalNode>,
+): boolean %checks {
+  return (
+    $isListItemNode(anchorNode) &&
+    (nodes.length === 0 ||
+      (nodes.length === 1 &&
+        anchorNode.is(nodes[0]) &&
+        anchorNode.getChildrenSize() === 0))
+  );
+}
+
+function $getListItemValue(listItem: ListItemNode): number {
+  const list = listItem.getParent();
+
+  let value = 1;
+  if (list != null) {
+    if (!$isListNode(list)) {
+      invariant(
+        false,
+        '$getListItemValue: list node is not parent of list item node',
+      );
+    } else {
+      value = list.getStart();
+    }
+  }
+
+  const siblings = listItem.getPreviousSiblings();
+  for (let i = 0; i < siblings.length; i++) {
+    const sibling = siblings[i];
+    if ($isListItemNode(sibling) && !$isListNode(sibling.getFirstChild())) {
+      value++;
+    }
+  }
+  return value;
+}
+
+export function insertList(editor: LexicalEditor, listType: ListType): void {
   editor.update(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
@@ -46,8 +85,7 @@ export function insertList(editor: LexicalEditor, listType: 'ul' | 'ol'): void {
       const anchor = selection.anchor;
       const anchorNode = anchor.getNode();
       const anchorNodeParent = anchorNode.getParent();
-      // This is a special case for when there's nothing selected
-      if (nodes.length === 0) {
+      if ($isSelectingEmptyListItem(anchorNode, nodes)) {
         const list = $createListNode(listType);
         if ($isRootNode(anchorNodeParent)) {
           anchorNode.replace(list);
@@ -80,6 +118,7 @@ export function insertList(editor: LexicalEditor, listType: 'ul' | 'ol'): void {
                   const newListNode = $createListNode(listType);
                   newListNode.append(...parent.getChildren());
                   parent.replace(newListNode);
+                  updateChildrenListItemValue(newListNode);
                   handled.add(parentKey);
                 }
                 break;
@@ -100,23 +139,29 @@ export function insertList(editor: LexicalEditor, listType: 'ul' | 'ol'): void {
   });
 }
 
-function createListOrMerge(node: ElementNode, listType: 'ul' | 'ol'): ListNode {
+function createListOrMerge(node: ElementNode, listType: ListType): ListNode {
   if ($isListNode(node)) {
     return node;
   }
   const previousSibling = node.getPreviousSibling();
   const nextSibling = node.getNextSibling();
   const listItem = $createListItemNode();
-  if ($isListNode(previousSibling) && listType === previousSibling.getTag()) {
+  if (
+    $isListNode(previousSibling) &&
+    listType === previousSibling.getListType()
+  ) {
     listItem.append(node);
     previousSibling.append(listItem);
     // if the same type of list is on both sides, merge them.
-    if ($isListNode(nextSibling) && listType === nextSibling.getTag()) {
+    if ($isListNode(nextSibling) && listType === nextSibling.getListType()) {
       previousSibling.append(...nextSibling.getChildren());
       nextSibling.remove();
     }
     return previousSibling;
-  } else if ($isListNode(nextSibling) && listType === nextSibling.getTag()) {
+  } else if (
+    $isListNode(nextSibling) &&
+    listType === nextSibling.getListType()
+  ) {
     listItem.append(node);
     nextSibling.getFirstChildOrThrow().insertBefore(listItem);
     return nextSibling;
@@ -125,6 +170,7 @@ function createListOrMerge(node: ElementNode, listType: 'ul' | 'ol'): ListNode {
     list.append(listItem);
     node.replace(list);
     listItem.append(node);
+    updateChildrenListItemValue(list);
     return list;
   }
 }
@@ -136,7 +182,7 @@ export function removeList(editor: LexicalEditor): void {
       const listNodes = new Set();
       const nodes = selection.getNodes();
       const anchorNode = selection.anchor.getNode();
-      if (nodes.length === 0 && $isListItemNode(anchorNode)) {
+      if ($isSelectingEmptyListItem(anchorNode, nodes)) {
         listNodes.add($getTopListNode(anchorNode));
       } else {
         for (let i = 0; i < nodes.length; i++) {
@@ -167,6 +213,20 @@ export function removeList(editor: LexicalEditor): void {
   });
 }
 
+export function updateChildrenListItemValue(
+  list: ListNode,
+  children?: Array<LexicalNode>,
+): void {
+  // $FlowFixMe: children are always list item nodes
+  (children || list.getChildren()).forEach((child: ListItemNode) => {
+    const prevValue = child.getValue();
+    const nextValue = $getListItemValue(child);
+    if (prevValue !== nextValue) {
+      child.setValue(nextValue);
+    }
+  });
+}
+
 export function $handleIndent(listItemNodes: Array<ListItemNode>): void {
   // go through each node and decide where to move it.
   const removed = new Set();
@@ -190,7 +250,7 @@ export function $handleIndent(listItemNodes: Array<ListItemNode>): void {
           nextSibling.remove();
           removed.add(nextSibling.getKey());
         }
-        innerList.getChildren().forEach((child) => child.markDirty());
+        updateChildrenListItemValue(innerList);
       }
     } else if (isNestedListNode(nextSibling)) {
       // if the ListItemNode is next to a nested ListNode, merge them
@@ -200,19 +260,19 @@ export function $handleIndent(listItemNodes: Array<ListItemNode>): void {
         if (firstChild !== null) {
           firstChild.insertBefore(listItemNode);
         }
-        innerList.getChildren().forEach((child) => child.markDirty());
+        updateChildrenListItemValue(innerList);
       }
     } else if (isNestedListNode(previousSibling)) {
       const innerList = previousSibling.getFirstChild();
       if ($isListNode(innerList)) {
         innerList.append(listItemNode);
-        innerList.getChildren().forEach((child) => child.markDirty());
+        updateChildrenListItemValue(innerList);
       }
     } else {
       // otherwise, we need to create a new nested ListNode
       if ($isListNode(parent)) {
         const newListItem = $createListItemNode();
-        const newList = $createListNode(parent.getTag());
+        const newList = $createListNode(parent.getListType());
         newListItem.append(newList);
         newList.append(listItemNode);
         if (previousSibling) {
@@ -225,7 +285,7 @@ export function $handleIndent(listItemNodes: Array<ListItemNode>): void {
       }
     }
     if ($isListNode(parent)) {
-      parent.getChildren().forEach((child) => child.markDirty());
+      updateChildrenListItemValue(parent);
     }
   });
 }
@@ -265,15 +325,15 @@ export function $handleOutdent(listItemNodes: Array<ListItemNode>): void {
         }
       } else {
         // otherwise, we need to split the siblings into two new nested lists
-        const tag = parentList.getTag();
+        const listType = parentList.getListType();
         const previousSiblingsListItem = $createListItemNode();
-        const previousSiblingsList = $createListNode(tag);
+        const previousSiblingsList = $createListNode(listType);
         previousSiblingsListItem.append(previousSiblingsList);
         listItemNode
           .getPreviousSiblings()
           .forEach((sibling) => previousSiblingsList.append(sibling));
         const nextSiblingsListItem = $createListItemNode();
-        const nextSiblingsList = $createListNode(tag);
+        const nextSiblingsList = $createListNode(listType);
         nextSiblingsListItem.append(nextSiblingsList);
         nextSiblingsList.append(...listItemNode.getNextSiblings());
         // put the sibling nested lists on either side of the grandparent list item in the great grandparent.
@@ -282,16 +342,16 @@ export function $handleOutdent(listItemNodes: Array<ListItemNode>): void {
         // replace the grandparent list item (now between the siblings) with the outdented list item.
         grandparentListItem.replace(listItemNode);
       }
-      parentList.getChildren().forEach((child) => child.markDirty());
-      greatGrandparentList.getChildren().forEach((child) => child.markDirty());
+      updateChildrenListItemValue(parentList);
+      updateChildrenListItemValue(greatGrandparentList);
     }
   });
 }
 
-function maybeIndentOrOutdent(direction: 'indent' | 'outdent'): boolean {
+function maybeIndentOrOutdent(direction: 'indent' | 'outdent'): void {
   const selection = $getSelection();
   if (!$isRangeSelection(selection)) {
-    return false;
+    return;
   }
   const selectedNodes = selection.getNodes();
   let listItemNodes = [];
@@ -314,17 +374,15 @@ function maybeIndentOrOutdent(direction: 'indent' | 'outdent'): boolean {
     } else {
       $handleOutdent(listItemNodes);
     }
-    return true;
   }
-  return false;
 }
 
-export function indentList(): boolean {
-  return maybeIndentOrOutdent('indent');
+export function indentList(): void {
+  maybeIndentOrOutdent('indent');
 }
 
-export function outdentList(): boolean {
-  return maybeIndentOrOutdent('outdent');
+export function outdentList(): void {
+  maybeIndentOrOutdent('outdent');
 }
 
 export function $handleListInsertParagraph(): boolean {
@@ -360,7 +418,7 @@ export function $handleListInsertParagraph(): boolean {
 
   const nextSiblings = anchor.getNextSiblings();
   if (nextSiblings.length > 0) {
-    const newList = $createListNode(parent.getTag());
+    const newList = $createListNode(parent.getListType());
     if ($isParagraphNode(replacementNode)) {
       replacementNode.insertAfter(newList);
     } else {

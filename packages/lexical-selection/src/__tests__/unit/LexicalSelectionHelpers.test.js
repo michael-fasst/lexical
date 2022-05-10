@@ -8,6 +8,7 @@
 
 import type {State} from 'lexical';
 
+import {$createLinkNode} from '@lexical/link';
 import {$createHeadingNode} from '@lexical/rich-text';
 import {$cloneContents} from '@lexical/selection';
 import {
@@ -496,8 +497,8 @@ describe('LexicalSelectionHelpers tests', () => {
       };
 
       // getNodes
-      setupTestCase((selection, state) => {
-        expect(selection.getNodes()).toEqual([]);
+      setupTestCase((selection, element) => {
+        expect(selection.getNodes()).toEqual([element]);
       });
 
       // getTextContent
@@ -573,14 +574,14 @@ describe('LexicalSelectionHelpers tests', () => {
 
       // Extract selection
       setupTestCase((selection, element) => {
-        expect(selection.extract()).toEqual([]);
+        expect(selection.extract()).toEqual([element]);
       });
 
       // cloneContents
       setupTestCase((selection, element) => {
         expect($cloneContents(selection)).toEqual({
-          nodeMap: [],
-          range: [],
+          nodeMap: [[element.getKey(), element]],
+          range: [element.getKey()],
         });
       });
     });
@@ -1506,6 +1507,43 @@ describe('LexicalSelectionHelpers tests', () => {
 
         expect(element.innerHTML).toBe(
           '<p dir="ltr"><span data-lexical-text="true">foobar</span></p>',
+        );
+      });
+
+      test('link insertion without parent element', async () => {
+        const editor = createTestEditor();
+        const element = document.createElement('div');
+        editor.setRootElement(element);
+
+        await editor.update((state: State) => {
+          const root = $getRoot();
+          const paragraph = $createParagraphNode();
+          root.append(paragraph);
+
+          setAnchorPoint({
+            key: paragraph.getKey(),
+            offset: 0,
+            type: 'element',
+          });
+          setFocusPoint({
+            key: paragraph.getKey(),
+            offset: 0,
+            type: 'element',
+          });
+          const selection = $getSelection();
+
+          const link = $createLinkNode('https://');
+          link.append($createTextNode('ello worl'));
+
+          selection.insertNodes([
+            $createTextNode('h'),
+            link,
+            $createTextNode('d'),
+          ]);
+        });
+
+        expect(element.innerHTML).toBe(
+          '<p dir="ltr"><span data-lexical-text="true">h</span><a href="https://" dir="ltr"><span data-lexical-text="true">ello worl</span></a><span data-lexical-text="true">d</span></p>',
         );
       });
 

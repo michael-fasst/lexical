@@ -225,7 +225,7 @@ function printObjectSelection(selection: NodeSelection): string {
 }
 
 function printGridSelection(selection: GridSelection): string {
-  return `: grid\n  └ { grid: ${selection.gridKey}, anchorCell: ${selection.anchorCellKey}, focusCell: ${selection.focusCellKey} }`;
+  return `: grid\n  └ { grid: ${selection.gridKey}, anchorCell: ${selection.anchor.key}, focusCell: ${selection.focus.key} }`;
 }
 
 function generateContent(editorState: EditorState): string {
@@ -320,6 +320,8 @@ const FORMAT_PREDICATES = [
   (node) => node.hasFormat('code') && 'Code',
   (node) => node.hasFormat('italic') && 'Italic',
   (node) => node.hasFormat('strikethrough') && 'Strikethrough',
+  (node) => node.hasFormat('subscript') && 'Subscript',
+  (node) => node.hasFormat('superscript') && 'Superscript',
   (node) => node.hasFormat('underline') && 'Underline',
 ];
 

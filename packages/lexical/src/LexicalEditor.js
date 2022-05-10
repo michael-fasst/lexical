@@ -7,7 +7,7 @@
  * @flow strict
  */
 
-import type {EditorState} from './LexicalEditorState';
+import type {EditorState, ParsedEditorState} from './LexicalEditorState';
 import type {DOMConversion, LexicalNode, NodeKey} from './LexicalNode';
 
 import getDOMSelection from 'shared/getDOMSelection';
@@ -81,6 +81,7 @@ export type EditorThemeClasses = {
     ulDepth: Array<EditorThemeClassName>,
   },
   ltr?: EditorThemeClassName,
+  mark?: EditorThemeClassName,
   paragraph?: EditorThemeClassName,
   quote?: EditorThemeClassName,
   root?: EditorThemeClassName,
@@ -285,6 +286,7 @@ export function createEditor(editorConfig?: {
 }
 
 export class LexicalEditor {
+  _headless: boolean;
   _parentEditor: null | LexicalEditor;
   _rootElement: null | HTMLElement;
   _editorState: EditorState;
@@ -367,6 +369,7 @@ export class LexicalEditor {
     this._onError = onError;
     this._htmlConversions = htmlConversions;
     this._readOnly = false;
+    this._headless = false;
   }
   isComposing(): boolean {
     return this._compositionKey != null;
@@ -497,7 +500,7 @@ export class LexicalEditor {
     }
     return true;
   }
-  dispatchCommand<P>(type: LexicalCommand<P>, payload?: P): boolean {
+  dispatchCommand<P>(type: LexicalCommand<P>, payload: P): boolean {
     return dispatchCommand(this, type, payload);
   }
   getDecorators(): {[NodeKey]: mixed} {
@@ -571,8 +574,13 @@ export class LexicalEditor {
     }
     commitPendingUpdates(this);
   }
-  parseEditorState(stringifiedEditorState: string): EditorState {
-    const parsedEditorState = JSON.parse(stringifiedEditorState);
+  parseEditorState(
+    maybeStringifiedEditorState: string | ParsedEditorState,
+  ): EditorState {
+    const parsedEditorState =
+      typeof maybeStringifiedEditorState === 'string'
+        ? JSON.parse(maybeStringifiedEditorState)
+        : maybeStringifiedEditorState;
     return parseEditorState(parsedEditorState, this);
   }
   update(updateFn: () => void, options?: EditorUpdateOptions): void {

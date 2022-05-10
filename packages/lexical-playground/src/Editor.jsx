@@ -12,13 +12,13 @@ import {$createListItemNode, $createListNode} from '@lexical/list';
 import AutoFocusPlugin from '@lexical/react/LexicalAutoFocusPlugin';
 import AutoScrollPlugin from '@lexical/react/LexicalAutoScrollPlugin';
 import CharacterLimitPlugin from '@lexical/react/LexicalCharacterLimitPlugin';
+import CheckListPlugin from '@lexical/react/LexicalCheckListPlugin';
 import LexicalClearEditorPlugin from '@lexical/react/LexicalClearEditorPlugin';
 import {CollaborationPlugin} from '@lexical/react/LexicalCollaborationPlugin';
 import HashtagsPlugin from '@lexical/react/LexicalHashtagPlugin';
 import {HistoryPlugin} from '@lexical/react/LexicalHistoryPlugin';
 import LinkPlugin from '@lexical/react/LexicalLinkPlugin';
 import ListPlugin from '@lexical/react/LexicalListPlugin';
-import LexicalMarkdownShortcutPlugin from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import PlainTextPlugin from '@lexical/react/LexicalPlainTextPlugin';
 import RichTextPlugin from '@lexical/react/LexicalRichTextPlugin';
 import TablesPlugin from '@lexical/react/LexicalTablePlugin';
@@ -36,6 +36,7 @@ import AutoLinkPlugin from './plugins/AutoLinkPlugin';
 import CharacterStylesPopupPlugin from './plugins/CharacterStylesPopupPlugin';
 import ClickableLinkPlugin from './plugins/ClickableLinkPlugin';
 import CodeHighlightPlugin from './plugins/CodeHighlightPlugin';
+import CommentPlugin from './plugins/CommentPlugin';
 import EmojisPlugin from './plugins/EmojisPlugin';
 import EquationsPlugin from './plugins/EquationsPlugin';
 import ExcalidrawPlugin from './plugins/ExcalidrawPlugin';
@@ -43,6 +44,7 @@ import HorizontalRulePlugin from './plugins/HorizontalRulePlugin';
 import ImagesPlugin from './plugins/ImagesPlugin';
 import KeywordsPlugin from './plugins/KeywordsPlugin';
 import ListMaxIndentLevelPlugin from './plugins/ListMaxIndentLevelPlugin';
+import MarkdownShortcutPlugin from './plugins/MarkdownShortcutPlugin';
 import MentionsPlugin from './plugins/MentionsPlugin';
 import PollPlugin from './plugins/PollPlugin';
 import SpeechToTextPlugin from './plugins/SpeechToTextPlugin';
@@ -96,7 +98,7 @@ function prepopulatedRichText() {
       $createTextNode(`If you'd like to find out more about Lexical, you can:`),
     );
     root.append(paragraph3);
-    const list = $createListNode('ul');
+    const list = $createListNode('bullet');
     list.append(
       $createListItemNode().append(
         $createTextNode(`Visit the `),
@@ -110,6 +112,13 @@ function prepopulatedRichText() {
         $createLinkNode('https://github.com/facebook/lexical').append(
           $createTextNode('GitHub repository'),
         ),
+        $createTextNode(`.`),
+      ),
+      $createListItemNode().append(
+        $createTextNode(`Playground code can be found `),
+        $createLinkNode(
+          'https://github.com/facebook/lexical/tree/main/packages/lexical-playground',
+        ).append($createTextNode('here')),
         $createTextNode(`.`),
       ),
       $createListItemNode().append(
@@ -164,15 +173,12 @@ export default function Editor(): React$Node {
         <LexicalClearEditorPlugin />
         <MentionsPlugin />
         <EmojisPlugin />
-        <ExcalidrawPlugin />
         <HashtagsPlugin />
         <KeywordsPlugin />
-        <HorizontalRulePlugin />
         <SpeechToTextPlugin />
         <AutoLinkPlugin />
-        <CharacterStylesPopupPlugin />
-        <EquationsPlugin />
         <AutoScrollPlugin scrollRef={scrollRef} />
+        {!isCollab && <CommentPlugin />}
         {isRichText ? (
           <>
             {isCollab ? (
@@ -191,9 +197,10 @@ export default function Editor(): React$Node {
                 isCollab ? null : emptyEditor ? undefined : prepopulatedRichText
               }
             />
-            <LexicalMarkdownShortcutPlugin />
+            <MarkdownShortcutPlugin />
             <CodeHighlightPlugin />
             <ListPlugin />
+            <CheckListPlugin />
             <ListMaxIndentLevelPlugin maxDepth={7} />
             <TablesPlugin />
             <TableCellActionMenuPlugin />
@@ -204,6 +211,10 @@ export default function Editor(): React$Node {
             <TwitterPlugin />
             <YouTubePlugin />
             <ClickableLinkPlugin />
+            <HorizontalRulePlugin />
+            <CharacterStylesPopupPlugin />
+            <EquationsPlugin />
+            <ExcalidrawPlugin />
           </>
         ) : (
           <>

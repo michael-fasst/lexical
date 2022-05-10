@@ -6,7 +6,6 @@
  *
  * @flow strict
  */
-
 import type {
   DOMChildConversion,
   DOMConversion,
@@ -18,23 +17,32 @@ import type {
   NodeSelection,
   ParsedNodeMap,
   RangeSelection,
+  TextNode,
 } from 'lexical';
 
-import {$cloneContents} from '@lexical/selection';
+import {$cloneWithProperties} from '@lexical/selection';
+import {$findMatchingParent} from '@lexical/utils';
 import {
+  $createGridSelection,
   $createNodeFromParse,
   $createParagraphNode,
-  $getNodeByKey,
+  $getRoot,
   $getSelection,
   $isElementNode,
+  $isGridCellNode,
+  $isGridNode,
+  $isGridRowNode,
   $isGridSelection,
   $isRangeSelection,
   $isTextNode,
+  $setSelection,
+  SELECTION_CHANGE_COMMAND,
 } from 'lexical';
+import invariant from 'shared/invariant';
 
 const IGNORE_TAGS = new Set(['STYLE']);
 
-export function getHtmlContent(editor: LexicalEditor): string | null {
+export function $getHtmlContent(editor: LexicalEditor): string | null {
   const selection = $getSelection();
 
   if (selection == null) {
@@ -49,110 +57,198 @@ export function getHtmlContent(editor: LexicalEditor): string | null {
     return null;
   }
 
-  const state = $cloneContents(selection);
-  return $convertSelectedLexicalContentToHtml(editor, selection, state);
+  return $convertSelectedContentToHtml(editor, selection);
 }
 
-export function $convertSelectedLexicalNodeToHTMLElement(
+export function $appendSelectedNodesToHTML(
   editor: LexicalEditor,
   selection: RangeSelection | NodeSelection | GridSelection,
-  node: LexicalNode,
-): ?HTMLElement {
-  let nodeToConvert = node;
-
-  if ($isRangeSelection(selection) || $isGridSelection(selection)) {
-    const anchor = selection.anchor.getNode();
-    const focus = selection.focus.getNode();
-    const isAnchor = node.is(anchor);
-    const isFocus = node.is(focus);
-
-    if ($isTextNode(node) && (isAnchor || isFocus)) {
-      const anchorOffset = selection.anchor.getCharacterOffset();
-      const focusOffset = selection.focus.getCharacterOffset();
-      const isBackward = selection.isBackward();
-
-      const isSame = anchor.is(focus);
-      const isFirst = node.is(isBackward ? focus : anchor);
-
-      const nodeText = node.getTextContent();
-      const nodeTextLength = nodeText.length;
-
-      if (isSame) {
-        const startOffset =
-          anchorOffset > focusOffset ? focusOffset : anchorOffset;
-        const endOffset =
-          anchorOffset > focusOffset ? anchorOffset : focusOffset;
-        const splitNodes = node.splitText(startOffset, endOffset);
-        nodeToConvert = startOffset === 0 ? splitNodes[0] : splitNodes[1];
-      } else {
-        let endOffset;
-
-        if (isFirst) {
-          endOffset = isBackward ? focusOffset : anchorOffset;
-        } else {
-          endOffset = isBackward ? anchorOffset : focusOffset;
-        }
-
-        if (!isBackward && endOffset === 0) {
-          return null;
-        } else if (endOffset !== nodeTextLength) {
-          nodeToConvert =
-            node.splitText(endOffset)[isFirst && endOffset !== 0 ? 1 : 0];
-        }
-      }
-    }
+  currentNode: LexicalNode,
+  parentElement: HTMLElement | DocumentFragment,
+): boolean {
+  let shouldInclude = currentNode.isSelected();
+  const shouldExclude =
+    $isElementNode(currentNode) && currentNode.excludeFromCopy('html');
+  let clone = $cloneWithProperties<LexicalNode>(currentNode);
+  clone = $isTextNode(clone) ? $splitClonedTextNode(selection, clone) : clone;
+  const children = $isElementNode(clone) ? clone.getChildren() : [];
+  const {element, after} = clone.exportDOM(editor);
+  if (!element) {
+    return false;
   }
-
-  const {element, after} = nodeToConvert.exportDOM(editor);
-  if (!element) return null;
-  const children = $isElementNode(nodeToConvert)
-    ? nodeToConvert.getChildren()
-    : [];
+  const fragment = new DocumentFragment();
   for (let i = 0; i < children.length; i++) {
     const childNode = children[i];
-
-    if (childNode.isSelected()) {
-      const newElement = $convertSelectedLexicalNodeToHTMLElement(
-        editor,
-        selection,
-        childNode,
-      );
-      if (newElement) element.append(newElement);
+    const shouldIncludeChild = $appendSelectedNodesToHTML(
+      editor,
+      selection,
+      childNode,
+      fragment,
+    );
+    if (
+      !shouldInclude &&
+      $isElementNode(currentNode) &&
+      shouldIncludeChild &&
+      currentNode.extractWithChild(childNode, selection, 'html')
+    ) {
+      shouldInclude = true;
     }
   }
-
-  return after ? after.call(nodeToConvert, element) : element;
+  if (shouldInclude && !shouldExclude) {
+    element.append(fragment);
+    parentElement.append(element);
+    if (after) {
+      const newElement = after.call(clone, element);
+      if (newElement) element.replaceWith(newElement);
+    }
+  } else {
+    parentElement.append(fragment);
+  }
+  return shouldInclude;
 }
 
-export function $convertSelectedLexicalContentToHtml(
+export function $convertSelectedContentToHtml(
   editor: LexicalEditor,
   selection: RangeSelection | NodeSelection | GridSelection,
-  state: {
-    nodeMap: Array<[NodeKey, LexicalNode]>,
-    range: Array<NodeKey>,
-  },
 ): string {
   const container = document.createElement('div');
-  for (let i = 0; i < state.range.length; i++) {
-    const nodeKey = state.range[i];
-    const node = $getNodeByKey(nodeKey);
-    if (node && node.isSelected()) {
-      const element = $convertSelectedLexicalNodeToHTMLElement(
-        editor,
-        selection,
-        node,
-      );
-      if (element) container.append(element);
-    }
+  const root = $getRoot();
+  const topLevelChildren = root.getChildren();
+  for (let i = 0; i < topLevelChildren.length; i++) {
+    const topLevelNode = topLevelChildren[i];
+    $appendSelectedNodesToHTML(editor, selection, topLevelNode, container);
   }
   return container.innerHTML;
+}
+
+export function $appendSelectedNodesToClone(
+  editor: LexicalEditor,
+  selection: RangeSelection | NodeSelection | GridSelection,
+  currentNode: LexicalNode,
+  nodeMap: Map<NodeKey, LexicalNode>,
+  range: Array<NodeKey>,
+  shouldIncludeInRange: boolean = true,
+): Array<NodeKey> {
+  let shouldInclude = currentNode.isSelected();
+  const shouldExclude =
+    $isElementNode(currentNode) && currentNode.excludeFromCopy('clone');
+  let clone = $cloneWithProperties<LexicalNode>(currentNode);
+  clone = $isTextNode(clone) ? $splitClonedTextNode(selection, clone) : clone;
+  const children = $isElementNode(clone) ? clone.getChildren() : [];
+  const nodeKeys = [];
+  let shouldIncludeChildrenInRange = shouldIncludeInRange;
+
+  if (shouldInclude && !shouldExclude) {
+    nodeMap.set(clone.getKey(), clone);
+    if (shouldIncludeInRange) {
+      shouldIncludeChildrenInRange = false;
+    }
+  }
+  for (let i = 0; i < children.length; i++) {
+    const childNode = children[i];
+    const childNodeKeys = $appendSelectedNodesToClone(
+      editor,
+      selection,
+      childNode,
+      nodeMap,
+      range,
+      shouldIncludeChildrenInRange,
+    );
+    for (let j = 0; j < childNodeKeys.length; j++) {
+      const childNodeKey = childNodeKeys[j];
+      nodeKeys.push(childNodeKey);
+    }
+    if (
+      !shouldInclude &&
+      $isElementNode(currentNode) &&
+      nodeKeys.includes(childNode.getKey()) &&
+      currentNode.extractWithChild(childNode, selection, 'clone')
+    ) {
+      shouldInclude = true;
+    }
+  }
+  // The tree is later built using $generateNodes which works
+  // by going through the nodes specified in the "range" & their children
+  // while filtering out nodes not found in the "nodeMap".
+  // This gets complicated when we want to "exclude" a node but
+  // keep it's children i.e. a MarkNode and it's Text children.
+  // The solution is to check if there's a cloned parent already in our map and
+  // splice the current node's children into the nearest parent.
+  // If there is no parent in the map already, the children will be added to the
+  // top level range be default.
+  if ($isElementNode(clone) && shouldExclude && shouldInclude) {
+    let nearestClonedParent: LexicalNode;
+    let idxWithinClonedParent: number;
+    let prev = clone;
+    let curr = clone.getParent();
+    const root = $getRoot();
+    while (curr != null && !curr.is(root)) {
+      if (
+        nodeMap.has(curr.getKey()) ||
+        curr.extractWithChild(currentNode, selection, 'clone')
+      ) {
+        nearestClonedParent = $cloneWithProperties<LexicalNode>(curr);
+        idxWithinClonedParent = prev.getIndexWithinParent();
+        nodeMap.set(nearestClonedParent.getKey(), nearestClonedParent);
+        break;
+      }
+      prev = curr;
+      curr = curr.getParent();
+    }
+    // Add children to nearest cloned parent at the correct position.
+    if ($isElementNode(nearestClonedParent) && idxWithinClonedParent != null) {
+      nearestClonedParent.__children.splice(
+        idxWithinClonedParent,
+        1,
+        ...clone.__children,
+      );
+    }
+  }
+  if (shouldInclude && !shouldExclude) {
+    if (!nodeMap.has(clone.getKey())) {
+      nodeMap.set(clone.getKey(), clone);
+    }
+    if (shouldIncludeInRange) {
+      return [clone.getKey()];
+    }
+  }
+  return shouldIncludeChildrenInRange ? nodeKeys : [];
+}
+
+export function $cloneSelectedContent(
+  editor: LexicalEditor,
+  selection: RangeSelection | NodeSelection | GridSelection,
+): {
+  nodeMap: Array<[NodeKey, LexicalNode]>,
+  range: Array<NodeKey>,
+} {
+  const root = $getRoot();
+  const nodeMap = new Map();
+  const range = [];
+  const topLevelChildren = root.getChildren();
+  for (let i = 0; i < topLevelChildren.length; i++) {
+    const topLevelNode = topLevelChildren[i];
+    const childNodeKeys = $appendSelectedNodesToClone(
+      editor,
+      selection,
+      topLevelNode,
+      nodeMap,
+      range,
+      true,
+    );
+    for (let j = 0; j < childNodeKeys.length; j++) {
+      const childNodeKey = childNodeKeys[j];
+      range.push(childNodeKey);
+    }
+  }
+  return {nodeMap: Array.from(nodeMap), range};
 }
 
 export function $getLexicalContent(editor: LexicalEditor): string | null {
   const selection = $getSelection();
   if (selection !== null) {
     const namespace = editor._config.namespace;
-    const state = $cloneContents(selection);
+    const state = $cloneSelectedContent(editor, selection);
     return JSON.stringify({namespace, state});
   }
   return null;
@@ -177,6 +273,15 @@ export function $insertDataTransferForRichText(
     'application/x-lexical-editor',
   );
 
+  const isSelectionInsideOfGrid =
+    $isGridSelection(selection) ||
+    ($findMatchingParent(selection.anchor.getNode(), (n) =>
+      $isGridCellNode(n),
+    ) !== null &&
+      $findMatchingParent(selection.focus.getNode(), (n) =>
+        $isGridCellNode(n),
+      ) !== null);
+
   if (lexicalNodesString) {
     const namespace = editor._config.namespace;
     try {
@@ -184,7 +289,17 @@ export function $insertDataTransferForRichText(
       if (lexicalClipboardData.namespace === namespace) {
         const nodeRange = lexicalClipboardData.state;
         const nodes = $generateNodes(nodeRange);
-        selection.insertNodes(nodes);
+
+        if (
+          isSelectionInsideOfGrid &&
+          nodes.length === 1 &&
+          $isGridNode(nodes[0])
+        ) {
+          $mergeGridNodesStrategy(nodes, selection, false, editor);
+          return;
+        }
+
+        $basicInsertStrategy(nodes, selection, true);
         return;
       }
     } catch (e) {
@@ -199,6 +314,29 @@ export function $insertDataTransferForRichText(
     const parser = new DOMParser();
     const dom = parser.parseFromString(htmlString, textHtmlMimeType);
     const nodes = $generateNodesFromDOM(dom, editor);
+
+    if (
+      isSelectionInsideOfGrid &&
+      nodes.length === 1 &&
+      $isGridNode(nodes[0])
+    ) {
+      $mergeGridNodesStrategy(nodes, selection, false, editor);
+      return;
+    }
+
+    $basicInsertStrategy(nodes, selection, false);
+    return;
+  }
+  $insertDataTransferForPlainText(dataTransfer, selection);
+}
+
+function $basicInsertStrategy(
+  nodes: LexicalNode[],
+  selection: RangeSelection | GridSelection,
+  isFromLexical: boolean,
+) {
+  let nodesToInsert;
+  if (!isFromLexical) {
     // Wrap text and inline nodes in paragraph nodes so we have all blocks at the top-level
     const topLevelBlocks = [];
     let currentBlock = null;
@@ -217,13 +355,120 @@ export function $insertDataTransferForRichText(
         currentBlock = null;
       }
     }
-    selection.insertNodes(topLevelBlocks);
-    return;
+    nodesToInsert = topLevelBlocks;
+  } else {
+    nodesToInsert = nodes;
   }
-  $insertDataTransferForPlainText(dataTransfer, selection);
+  if ($isRangeSelection(selection)) {
+    selection.insertNodes(nodesToInsert);
+  } else if ($isGridSelection(selection)) {
+    // If there's an active grid selection and a non grid is pasted, add to the anchor.
+    const anchorCell = selection.anchor.getNode();
+    if (!$isGridCellNode(anchorCell)) {
+      invariant(false, 'Expected Grid Cell in Grid Selection');
+    }
+    anchorCell.append(...nodesToInsert);
+  }
 }
 
-function $generateNodes(nodeRange: {
+function $mergeGridNodesStrategy(
+  nodes: LexicalNode[],
+  selection: RangeSelection | GridSelection,
+  isFromLexical: boolean,
+  editor: LexicalEditor,
+) {
+  if (nodes.length !== 1 || !$isGridNode(nodes[0])) {
+    invariant(false, '$mergeGridNodesStrategy: Expected Grid insertion.');
+  }
+  const newGrid = nodes[0];
+  const newGridRows = newGrid.getChildren();
+  const newColumnCount = newGrid.getFirstChildOrThrow().getChildrenSize();
+  const newRowCount = newGrid.getChildrenSize();
+  const gridCellNode = $findMatchingParent(selection.anchor.getNode(), (n) =>
+    $isGridCellNode(n),
+  );
+  const gridRowNode =
+    gridCellNode && $findMatchingParent(gridCellNode, (n) => $isGridRowNode(n));
+  const gridNode =
+    gridRowNode && $findMatchingParent(gridRowNode, (n) => $isGridNode(n));
+  if (
+    !$isGridCellNode(gridCellNode) ||
+    !$isGridRowNode(gridRowNode) ||
+    !$isGridNode(gridNode)
+  ) {
+    invariant(
+      false,
+      '$mergeGridNodesStrategy: Expected selection to be inside of a Grid.',
+    );
+  }
+  const startY = gridRowNode.getIndexWithinParent();
+  const stopY = Math.min(
+    gridNode.getChildrenSize() - 1,
+    startY + newRowCount - 1,
+  );
+  const startX = gridCellNode.getIndexWithinParent();
+  const stopX = Math.min(
+    gridRowNode.getChildrenSize() - 1,
+    startX + newColumnCount - 1,
+  );
+  const fromX = Math.min(startX, stopX);
+  const fromY = Math.min(startY, stopY);
+  const toX = Math.max(startX, stopX);
+  const toY = Math.max(startY, stopY);
+  const gridRowNodes = gridNode.getChildren();
+  let newRowIdx = 0;
+  let newAnchorCellKey;
+  let newFocusCellKey;
+  for (let r = fromY; r <= toY; r++) {
+    const currentGridRowNode = gridRowNodes[r];
+    if (!$isGridRowNode(currentGridRowNode)) {
+      invariant(false, 'getNodes: expected to find GridRowNode');
+    }
+    const newGridRowNode = newGridRows[newRowIdx];
+    if (!$isGridRowNode(newGridRowNode)) {
+      invariant(false, 'getNodes: expected to find GridRowNode');
+    }
+    const gridCellNodes = currentGridRowNode.getChildren();
+    const newGridCellNodes = newGridRowNode.getChildren();
+    let newColumnIdx = 0;
+    for (let c = fromX; c <= toX; c++) {
+      const currentGridCellNode = gridCellNodes[c];
+      if (!$isGridCellNode(currentGridCellNode)) {
+        invariant(false, 'getNodes: expected to find GridCellNode');
+      }
+      const newGridCellNode = newGridCellNodes[newColumnIdx];
+      if (!$isGridCellNode(newGridCellNode)) {
+        invariant(false, 'getNodes: expected to find GridCellNode');
+      }
+      if (r === fromY && c === fromX) {
+        newAnchorCellKey = currentGridCellNode.getKey();
+      } else if (r === toY && c === toX) {
+        newFocusCellKey = currentGridCellNode.getKey();
+      }
+      const originalChildren = currentGridCellNode.getChildren();
+      newGridCellNode.getChildren().forEach((child) => {
+        if ($isTextNode(child)) {
+          const paragraphNode = $createParagraphNode();
+          paragraphNode.append(child);
+          currentGridCellNode.append(child);
+        } else {
+          currentGridCellNode.append(child);
+        }
+      });
+      originalChildren.forEach((n) => n.remove());
+      newColumnIdx++;
+    }
+    newRowIdx++;
+  }
+  if (newAnchorCellKey && newFocusCellKey) {
+    const newGridSelection = $createGridSelection();
+    newGridSelection.set(gridNode.getKey(), newAnchorCellKey, newFocusCellKey);
+    $setSelection(newGridSelection);
+    editor.dispatchCommand(SELECTION_CHANGE_COMMAND);
+  }
+}
+
+export function $generateNodes(nodeRange: {
   nodeMap: ParsedNodeMap,
   range: Array<NodeKey>,
 }): Array<LexicalNode> {
@@ -337,7 +582,7 @@ function $createNodesFromDOM(
   return lexicalNodes;
 }
 
-function $generateNodesFromDOM(
+export function $generateNodesFromDOM(
   dom: Document,
   editor: LexicalEditor,
 ): Array<LexicalNode> {
@@ -354,4 +599,45 @@ function $generateNodesFromDOM(
     }
   }
   return lexicalNodes;
+}
+
+export function $splitClonedTextNode(
+  selection: RangeSelection | GridSelection | NodeSelection,
+  clone: TextNode,
+): LexicalNode {
+  if (
+    clone.isSelected() &&
+    !clone.isSegmented() &&
+    !clone.isToken() &&
+    ($isRangeSelection(selection) || $isGridSelection(selection))
+  ) {
+    const anchorNode = selection.anchor.getNode();
+    const focusNode = selection.focus.getNode();
+    const isAnchor = clone.is(anchorNode);
+    const isFocus = clone.is(focusNode);
+    if (isAnchor || isFocus) {
+      const isBackward = selection.isBackward();
+      const [anchorOffset, focusOffset] = selection.getCharacterOffsets();
+      const isSame = anchorNode.is(focusNode);
+      const isFirst = clone.is(isBackward ? focusNode : anchorNode);
+      const isLast = clone.is(isBackward ? anchorNode : focusNode);
+      let startOffset = 0;
+      let endOffset = undefined;
+      if (isSame) {
+        startOffset = anchorOffset > focusOffset ? focusOffset : anchorOffset;
+        endOffset = anchorOffset > focusOffset ? anchorOffset : focusOffset;
+      } else if (isFirst) {
+        const offset = isBackward ? focusOffset : anchorOffset;
+        startOffset = offset;
+        endOffset = undefined;
+      } else if (isLast) {
+        const offset = isBackward ? anchorOffset : focusOffset;
+        startOffset = 0;
+        endOffset = offset;
+      }
+      clone.__text = clone.__text.slice(startOffset, endOffset);
+      return clone;
+    }
+  }
+  return clone;
 }

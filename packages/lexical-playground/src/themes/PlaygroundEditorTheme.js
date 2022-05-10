@@ -58,6 +58,8 @@ const theme: EditorThemeClasses = {
   link: 'PlaygroundEditorTheme__link',
   list: {
     listitem: 'PlaygroundEditorTheme__listItem',
+    listitemChecked: 'PlaygroundEditorTheme__listItemChecked',
+    listitemUnchecked: 'PlaygroundEditorTheme__listItemUnchecked',
     nested: {
       listitem: 'PlaygroundEditorTheme__nestedListItem',
     },
@@ -71,6 +73,7 @@ const theme: EditorThemeClasses = {
     ul: 'PlaygroundEditorTheme__ul',
   },
   ltr: 'PlaygroundEditorTheme__ltr',
+  mark: 'PlaygroundEditorTheme__mark',
   paragraph: 'PlaygroundEditorTheme__paragraph',
   quote: 'PlaygroundEditorTheme__quote',
   rtl: 'PlaygroundEditorTheme__rtl',
@@ -82,6 +85,8 @@ const theme: EditorThemeClasses = {
     code: 'PlaygroundEditorTheme__textCode',
     italic: 'PlaygroundEditorTheme__textItalic',
     strikethrough: 'PlaygroundEditorTheme__textStrikethrough',
+    subscript: 'PlaygroundEditorTheme__textSubscript',
+    superscript: 'PlaygroundEditorTheme__textSuperscript',
     underline: 'PlaygroundEditorTheme__textUnderline',
     underlineStrikethrough: 'PlaygroundEditorTheme__textUnderlineStrikethrough',
   },

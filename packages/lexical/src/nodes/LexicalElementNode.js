@@ -6,14 +6,18 @@
  *
  * @flow strict
  */
-
 import type {NodeKey} from '../LexicalNode';
-import type {PointType, RangeSelection} from '../LexicalSelection';
+import type {
+  GridSelection,
+  NodeSelection,
+  PointType,
+  RangeSelection,
+} from '../LexicalSelection';
 
 import invariant from 'shared/invariant';
 
 import {$isRootNode, $isTextNode, TextNode} from '../';
-import {ELEMENT_TYPE_TO_FORMAT} from '../LexicalConstants';
+import {DOUBLE_LINE_BREAK, ELEMENT_TYPE_TO_FORMAT} from '../LexicalConstants';
 import {LexicalNode} from '../LexicalNode';
 import {
   $getSelection,
@@ -78,6 +82,11 @@ export class ElementNode extends LexicalNode {
     const editor = getActiveEditor();
     const dirtyElements = editor._dirtyElements;
     return dirtyElements !== null && dirtyElements.has(this.__key);
+  }
+  isLastChild(): boolean {
+    const self = this.getLatest();
+    const parent = self.getParentOrThrow();
+    return parent.getLastChild() === self;
   }
   getAllTextNodes(includeInert?: boolean): Array<TextNode> {
     const textNodes = [];
@@ -189,7 +198,7 @@ export class ElementNode extends LexicalNode {
         i !== childrenLength - 1 &&
         !child.isInline()
       ) {
-        textContent += '\n\n';
+        textContent += DOUBLE_LINE_BREAK;
       }
     }
     return textContent;
@@ -410,6 +419,9 @@ export class ElementNode extends LexicalNode {
   canInsertTab(): boolean {
     return false;
   }
+  canIndent(): boolean {
+    return true;
+  }
   collapseAtStart(selection: RangeSelection): boolean {
     return false;
   }
@@ -438,6 +450,13 @@ export class ElementNode extends LexicalNode {
     return false;
   }
   canMergeWith(node: ElementNode): boolean {
+    return false;
+  }
+  extractWithChild(
+    child: LexicalNode,
+    selection: RangeSelection | NodeSelection | GridSelection,
+    destination: 'clone' | 'html',
+  ): boolean {
     return false;
   }
 }

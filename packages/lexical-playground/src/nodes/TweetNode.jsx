@@ -95,13 +95,16 @@ export class TweetNode extends DecoratorBlockNode<React$Node> {
   }
 
   static clone(node: TweetNode): TweetNode {
-    return new TweetNode(node.__id, node.__key);
+    return new TweetNode(node.__id, node.__format, node.__key);
   }
 
-  constructor(id: string, key?: NodeKey) {
-    super(key);
-
+  constructor(id: string, format?: ?ElementFormatType, key?: NodeKey) {
+    super(format, key);
     this.__id = id;
+  }
+
+  getId(): string {
+    return this.__id;
   }
 
   decorate(): React$Node {
@@ -113,11 +116,6 @@ export class TweetNode extends DecoratorBlockNode<React$Node> {
         tweetID={this.__id}
       />
     );
-  }
-
-  setFormat(format: ElementFormatType): void {
-    const self = this.getWritable();
-    self.__format = format;
   }
 }
 

@@ -27,18 +27,27 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 // $FlowFixMe
 import {createPortal} from 'react-dom';
 
-function setPopupPosition(editor, rect) {
-  if (rect === null) {
-    editor.style.opacity = '0';
-    editor.style.top = '-1000px';
-    editor.style.left = '-1000px';
-  } else {
-    editor.style.opacity = '1';
-    editor.style.top = `${rect.top - 8 + window.pageYOffset}px`;
-    editor.style.left = `${
-      rect.left + 230 + window.pageXOffset - editor.offsetWidth + rect.width / 2
-    }px`;
+function setPopupPosition(
+  editor: HTMLElement,
+  rect: ClientRect,
+  rootElementRect: ClientRect,
+): void {
+  let top = rect.top - 8 + window.pageYOffset;
+  let left =
+    rect.left + 230 + window.pageXOffset - editor.offsetWidth + rect.width;
+  if (
+    rect.width >= rootElementRect.width - 20 ||
+    left > rootElementRect.width - 150
+  ) {
+    left = rect.left;
+    top = rect.top - 50 + window.pageYOffset;
   }
+  if (top < rootElementRect.top) {
+    top = rect.bottom + 20;
+  }
+  editor.style.opacity = '1';
+  editor.style.top = `${top}px`;
+  editor.style.left = `${left}px`;
 }
 
 function FloatingCharacterStylesEditor({
@@ -49,6 +58,8 @@ function FloatingCharacterStylesEditor({
   isUnderline,
   isCode,
   isStrikethrough,
+  isSubscript,
+  isSuperscript,
 }: {
   editor: LexicalEditor,
   isBold: boolean,
@@ -56,6 +67,8 @@ function FloatingCharacterStylesEditor({
   isItalic: boolean,
   isLink: boolean,
   isStrikethrough: boolean,
+  isSubscript: boolean,
+  isSuperscript: boolean,
   isUnderline: boolean,
 }): React$Node {
   const popupCharStylesEditorRef = useRef<HTMLElement | null>(null);
@@ -87,7 +100,9 @@ function FloatingCharacterStylesEditor({
       rootElement.contains(nativeSelection.anchorNode)
     ) {
       const domRange = nativeSelection.getRangeAt(0);
+      const rootElementRect = rootElement.getBoundingClientRect();
       let rect;
+
       if (nativeSelection.anchorNode === rootElement) {
         let inner = rootElement;
         while (inner.firstElementChild != null) {
@@ -99,12 +114,28 @@ function FloatingCharacterStylesEditor({
       }
 
       if (!mouseDownRef.current) {
-        setPopupPosition(popupCharStylesEditorElem, rect);
+        setPopupPosition(popupCharStylesEditorElem, rect, rootElementRect);
       }
     }
   }, [editor]);
 
   useEffect(() => {
+    const onResize = () => {
+      editor.getEditorState().read(() => {
+        updateCharacterStylesEditor();
+      });
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+    };
+  }, [editor, updateCharacterStylesEditor]);
+
+  useEffect(() => {
+    editor.getEditorState().read(() => {
+      updateCharacterStylesEditor();
+    });
     return mergeRegister(
       editor.registerUpdateListener(({editorState}) => {
         editorState.read(() => {
@@ -130,7 +161,7 @@ function FloatingCharacterStylesEditor({
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
         }}
         className={'popup-item spaced ' + (isBold ? 'active' : '')}
-        aria-label="Format Bold">
+        aria-label="Format text as bold">
         <i className="format bold" />
       </button>
       <button
@@ -138,7 +169,7 @@ function FloatingCharacterStylesEditor({
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
         }}
         className={'popup-item spaced ' + (isItalic ? 'active' : '')}
-        aria-label="Format Italics">
+        aria-label="Format text as italics">
         <i className="format italic" />
       </button>
       <button
@@ -146,7 +177,7 @@ function FloatingCharacterStylesEditor({
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
         }}
         className={'popup-item spaced ' + (isUnderline ? 'active' : '')}
-        aria-label="Format Underline">
+        aria-label="Format text to underlined">
         <i className="format underline" />
       </button>
       <button
@@ -154,21 +185,39 @@ function FloatingCharacterStylesEditor({
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough');
         }}
         className={'popup-item spaced ' + (isStrikethrough ? 'active' : '')}
-        aria-label="Format Strikethrough">
+        aria-label="Format text with a strikethrough">
         <i className="format strikethrough" />
+      </button>
+      <button
+        onClick={() => {
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'subscript');
+        }}
+        className={'popup-item spaced ' + (isSubscript ? 'active' : '')}
+        title="Subscript"
+        aria-label="Format Subscript">
+        <i className="format subscript" />
+      </button>
+      <button
+        onClick={() => {
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'superscript');
+        }}
+        className={'popup-item spaced ' + (isSuperscript ? 'active' : '')}
+        title="Superscript"
+        aria-label="Format Superscript">
+        <i className="format superscript" />
       </button>
       <button
         onClick={() => {
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
         }}
         className={'popup-item spaced ' + (isCode ? 'active' : '')}
-        aria-label="Insert Code">
+        aria-label="Insert code block">
         <i className="format code" />
       </button>
       <button
         onClick={insertLink}
         className={'popup-item spaced ' + (isLink ? 'active' : '')}
-        aria-label="Insert Link">
+        aria-label="Insert link">
         <i className="format link" />
       </button>
     </div>
@@ -198,47 +247,69 @@ function useCharacterStylesPopup(editor: LexicalEditor): React$Node {
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [isStrikethrough, setIsStrikethrough] = useState(false);
+  const [isSubscript, setIsSubscript] = useState(false);
+  const [isSuperscript, setIsSuperscript] = useState(false);
   const [isCode, setIsCode] = useState(false);
 
-  useEffect(() => {
-    return editor.registerUpdateListener(({editorState}) => {
-      editorState.read(() => {
-        const selection = $getSelection();
+  const updatePopup = useCallback(() => {
+    editor.getEditorState().read(() => {
+      const selection = $getSelection();
+      const nativeSelection = window.getSelection();
+      const rootElement = editor.getRootElement();
 
-        if (!$isRangeSelection(selection)) {
-          return;
-        }
+      if (
+        !$isRangeSelection(selection) ||
+        rootElement === null ||
+        !rootElement.contains(nativeSelection.anchorNode)
+      ) {
+        setIsText(false);
+        return;
+      }
 
-        const node = getSelectedNode(selection);
+      const node = getSelectedNode(selection);
 
-        // Update text format
-        setIsBold(selection.hasFormat('bold'));
-        setIsItalic(selection.hasFormat('italic'));
-        setIsUnderline(selection.hasFormat('underline'));
-        setIsStrikethrough(selection.hasFormat('strikethrough'));
-        setIsCode(selection.hasFormat('code'));
+      // Update text format
+      setIsBold(selection.hasFormat('bold'));
+      setIsItalic(selection.hasFormat('italic'));
+      setIsUnderline(selection.hasFormat('underline'));
+      setIsStrikethrough(selection.hasFormat('strikethrough'));
+      setIsSubscript(selection.hasFormat('subscript'));
+      setIsSuperscript(selection.hasFormat('superscript'));
+      setIsCode(selection.hasFormat('code'));
 
-        // Update links
-        const parent = node.getParent();
-        if ($isLinkNode(parent) || $isLinkNode(node)) {
-          setIsLink(true);
-        } else {
-          setIsLink(false);
-        }
+      // Update links
+      const parent = node.getParent();
+      if ($isLinkNode(parent) || $isLinkNode(node)) {
+        setIsLink(true);
+      } else {
+        setIsLink(false);
+      }
 
-        if (
-          !$isCodeHighlightNode(selection.anchor.getNode()) &&
-          selection.getTextContent() !== ''
-        ) {
-          setIsText($isTextNode(node));
-        } else {
-          setIsText(false);
-        }
-      });
+      if (
+        !$isCodeHighlightNode(selection.anchor.getNode()) &&
+        selection.getTextContent() !== ''
+      ) {
+        setIsText($isTextNode(node));
+      } else {
+        setIsText(false);
+      }
     });
   }, [editor]);
 
-  if (!isText || !isLink) {
+  useEffect(() => {
+    document.addEventListener('selectionchange', updatePopup);
+    return () => {
+      document.removeEventListener('selectionchange', updatePopup);
+    };
+  }, [updatePopup]);
+
+  useEffect(() => {
+    return editor.registerUpdateListener(() => {
+      updatePopup();
+    });
+  }, [editor, updatePopup]);
+
+  if (!isText || isLink) {
     return null;
   }
 
@@ -249,6 +320,8 @@ function useCharacterStylesPopup(editor: LexicalEditor): React$Node {
       isBold={isBold}
       isItalic={isItalic}
       isStrikethrough={isStrikethrough}
+      isSubscript={isSubscript}
+      isSuperscript={isSuperscript}
       isUnderline={isUnderline}
       isCode={isCode}
     />,

@@ -12,6 +12,7 @@ import {
   $deleteTableColumn,
   $getElementGridForTableNode,
   $getTableCellNodeFromLexicalNode,
+  $getTableCellSiblingsFromTableCellNode,
   $getTableColumnIndexFromTableCellNode,
   $getTableNodeFromLexicalNodeOrThrow,
   $getTableRowIndexFromTableCellNode,
@@ -34,6 +35,8 @@ import * as React from 'react';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 // $FlowFixMe
 import {createPortal} from 'react-dom';
+
+import TextInput from '../ui/TextInput';
 
 type TableCellActionMenuProps = $ReadOnly<{
   contextRef: {current: null | HTMLElement},
@@ -124,6 +127,7 @@ function TableActionMenu({
     editor.update(() => {
       if (tableCellNode.isAttached()) {
         const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+
         const tableElement = editor.getElementByKey(tableNode.getKey());
 
         if (!tableElement) {
@@ -326,6 +330,171 @@ function TableActionMenu({
     [editor, tableCellNode, clearTableSelection, onClose],
   );
 
+  const mergeRightCell = useCallback(() => {
+    editor.update(() => {
+      console.log(tableCellNode);
+      // const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+      // console.log(tableNode);
+      // const grid = $getElementGridForTableNode(editor, tableNode);
+      // const getCellSiblings = $getTableCellSiblingsFromTableCellNode(
+      //   tableCellNode,
+      //   grid,
+      // );
+
+      // const {above, below, left, right} = getCellSiblings;
+      // console.log({above, below, left, right});
+      //       $getTableColumnIndexFromTableCellNode(tableCellNode);
+
+      const elemKey = editor.getElementByKey(tableCellNode.getKey());
+      elemKey.setAttribute('colspan', '2');
+      clearTableSelection();
+      onClose();
+    });
+  }, [editor, tableCellNode, clearTableSelection, onClose]);
+
+  const styleCellOptions = useCallback(
+    (
+      cellStyle,
+      cellBackgroundColor,
+      topBorderCellStyle,
+      bottomBorderCellStyle,
+      rightBorderCellStyle,
+      leftBorderCellStyle,
+    ) => {
+      editor.update(() => {
+        console.log(leftBorderCellStyle);
+        const elemKey = editor.getElementByKey(tableCellNode.getKey());
+
+        if (topBorderCellStyle) {
+          elemKey.style.borderTop = `${topBorderCellStyle}`;
+          elemKey.style.borderRadius = '10px';
+        }
+        if (bottomBorderCellStyle) {
+          elemKey.style.borderBottom = `${bottomBorderCellStyle}`;
+        }
+        if (rightBorderCellStyle) {
+          elemKey.style.borderRight = `${rightBorderCellStyle}`;
+        }
+        if (leftBorderCellStyle) {
+          elemKey.style.borderLeft = `${leftBorderCellStyle}`;
+        }
+
+        // const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+        // console.log(tableNode);
+        // const grid = $getElementGridForTableNode(editor, tableNode);
+        // const getCellSiblings = $getTableCellSiblingsFromTableCellNode(
+        //   tableCellNode,
+        //   grid,
+        // );
+
+        // const {above, below, left, right} = getCellSiblings;
+        // console.log({above, below, left, right});
+        //       $getTableColumnIndexFromTableCellNode(tableCellNode);
+
+        // console.log(elemKey);
+        // // elemKey.setAttribute('colspan', '2');
+        // elemKey.style.background = 'red';
+        // elemKey.style.border = `${cellStyle}`;
+        clearTableSelection();
+        onClose();
+      });
+    },
+    [editor, tableCellNode, clearTableSelection, onClose],
+  );
+
+  // const mergeRightCell = useCallback(() => {
+  //   editor.update(() => {
+  //     const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode);
+  //     const tableColumnIndex =
+  //       $getTableColumnIndexFromTableCellNode(tableCellNode);
+  //     // const tableRowNodeIndex =
+  //     //   $getTableRowNodeFromTableCellNodeOrThrow(tableCellNode);
+
+  //     console.log(tableColumnIndex);
+  //     const tableRows = tableNode.getChildren();
+  //     for (let r = 0; r < tableRows.length; r++) {
+  //       const tableRow = tableRows[r];
+
+  //       if (!$isTableRowNode(tableRow)) {
+  //         throw new Error('Expected table row');
+  //       }
+
+  //       const tableCells = tableRow.getChildren();
+
+  //       if (tableColumnIndex >= tableCells.length || tableColumnIndex < 0) {
+  //         throw new Error('Expected table cell to be inside of table row.');
+  //       }
+
+  //       const tableCell = tableCells[tableColumnIndex];
+
+  //       if (!$isTableCellNode(tableCell)) {
+  //         throw new Error('Expected table cell');
+  //       }
+  //       tableCell.mergeCellRight('2');
+  //     }
+  //     $deleteTableColumn(tableNode, tableColumnIndex);
+
+  //     clearTableSelection();
+  //     onClose();
+  //   });
+  // }, [editor, tableCellNode, clearTableSelection, onClose]);
+
+  // const [headerBackgroundColor, setHeaderBackgroundColor] = useState('gray');
+  const [cellBackgroundColor, setCellBackgroundColor] = useState('white');
+  const [cellBorderColor, setCellBorderColor] = useState('black');
+  const [cellBorderStyle, setCellBorderStyle] = useState('solid');
+  const [cellBorderWidth, setCellBorderWidth] = useState('1');
+
+  const [cellBorderTopColor, setCellBorderTopColor] = useState('');
+  const [cellBorderTopStyle, setCellBorderTopStyle] = useState('');
+  const [cellBorderTopWidth, setCellBorderTopWidth] = useState('');
+
+  const [cellBorderBottomColor, setCellBorderBottomColor] = useState('');
+  const [cellBorderBottomStyle, setCellBorderBottomStyle] = useState('');
+  const [cellBorderBottomWidth, setCellBorderBottomWidth] = useState('');
+
+  const [cellBorderLeftColor, setCellBorderLeftColor] = useState('');
+  const [cellBorderLeftStyle, setCellBorderLeftStyle] = useState('');
+  const [cellBorderLeftWidth, setCellBorderLeftWidth] = useState('');
+
+  const [cellBorderRightColor, setCellBorderRightColor] = useState('');
+  const [cellBorderRightStyle, setCellBorderRightStyle] = useState('');
+  const [cellBorderRightWidth, setCellBorderRightWidth] = useState('');
+
+  const [cellStyle, setCellStyle] = useState('');
+  const [topBorderCellStyle, setTopBorderCellStyle] = useState('');
+  const [bottomBorderCellStyle, setBottomBorderCellStyle] = useState('');
+  const [leftBorderCellStyle, setLeftBorderCellStyle] = useState('');
+  const [rightBorderCellStyle, setRightBorderCellStyle] = useState('');
+
+  useEffect(() => {
+    setCellStyle(`${cellBorderWidth}px ${cellBorderStyle} ${cellBorderColor}`);
+  }, [cellBorderWidth, cellBorderStyle, cellBorderColor]);
+
+  useEffect(() => {
+    setTopBorderCellStyle(
+      `${cellBorderTopWidth}px ${cellBorderTopStyle} ${cellBorderTopColor}`,
+    );
+  }, [cellBorderTopWidth, cellBorderTopStyle, cellBorderTopColor]);
+
+  useEffect(() => {
+    setBottomBorderCellStyle(
+      `${cellBorderBottomWidth}px ${cellBorderBottomStyle} ${cellBorderBottomColor}`,
+    );
+  }, [cellBorderBottomWidth, cellBorderBottomStyle, cellBorderBottomColor]);
+
+  useEffect(() => {
+    setRightBorderCellStyle(
+      `${cellBorderRightWidth}px ${cellBorderRightStyle} ${cellBorderRightColor}`,
+    );
+  }, [cellBorderRightWidth, cellBorderRightStyle, cellBorderRightColor]);
+
+  useEffect(() => {
+    setLeftBorderCellStyle(
+      `${cellBorderLeftWidth}px ${cellBorderLeftStyle} ${cellBorderLeftColor}`,
+    );
+  }, [cellBorderLeftWidth, cellBorderLeftStyle, cellBorderLeftColor]);
+
   return createPortal(
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
@@ -348,6 +517,210 @@ function TableActionMenu({
           below
         </span>
       </button>
+      <hr />
+      <button className="item" onClick={() => mergeRightCell(true)}>
+        <span className="text">
+          MergeCell right avec des bordures JAUNES DOTTES DE 3 px et un fond
+          rouge
+        </span>
+      </button>
+      <hr />
+      <div>
+        <TextInput
+          label="Background Color"
+          onChange={setCellBackgroundColor}
+          value={cellBackgroundColor}
+        />
+        <TextInput
+          label="Border Color"
+          onChange={setCellBorderColor}
+          value={cellBorderColor}
+        />
+        <TextInput
+          label="Border thickness"
+          onChange={setCellBorderWidth}
+          value={cellBorderWidth}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}>
+          <p>Border Style</p>
+          <select
+            id="Border Style"
+            name="Border Style"
+            style={{align: 'center', height: '50%', width: '50%'}}
+            value={cellBorderStyle}
+            onChange={(e) => setCellBorderStyle(e.target.value)}>
+            <option value="none">none</option>
+            <option value="dotted">dotted</option>
+            <option value="inset">inset</option>
+            <option value="solid">solid</option>
+            <option value="double">double</option>
+            <option value="groove">groove</option>
+            <option value="ridge">ridge</option>
+            <option value="outset">outset</option>
+            <option value="mix">mix</option>
+          </select>
+        </div>
+        <hr />
+        <TextInput
+          label="Border Top Color"
+          onChange={setCellBorderTopColor}
+          value={cellBorderTopColor}
+        />
+        <TextInput
+          label="Border top width"
+          onChange={setCellBorderTopWidth}
+          value={cellBorderTopWidth}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}>
+          <p>Border Top Style</p>
+          <select
+            id="Border Top Style"
+            name="Border Top Style"
+            style={{align: 'center', height: '50%', width: '50%'}}
+            value={cellBorderTopStyle}
+            onChange={(e) => setCellBorderTopStyle(e.target.value)}>
+            <option value="none">none</option>
+            <option value="dotted">dotted</option>
+            <option value="inset">inset</option>
+            <option value="solid">solid</option>
+            <option value="double">double</option>
+            <option value="groove">groove</option>
+            <option value="ridge">ridge</option>
+            <option value="outset">outset</option>
+            <option value="mix">mix</option>
+          </select>
+        </div>
+        <hr />
+        <TextInput
+          label="Border bottom Color"
+          onChange={setCellBorderBottomColor}
+          value={cellBorderBottomColor}
+        />
+        <TextInput
+          label="Border bottom width"
+          onChange={setCellBorderBottomWidth}
+          value={cellBorderBottomWidth}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}>
+          <p>Border Bottom Style</p>
+          <select
+            id="Border bottom Style"
+            name="Border bottom Style"
+            style={{align: 'center', height: '50%', width: '50%'}}
+            value={cellBorderBottomStyle}
+            onChange={(e) => setCellBorderBottomStyle(e.target.value)}>
+            <option value="none">none</option>
+            <option value="dotted">dotted</option>
+            <option value="inset">inset</option>
+            <option value="solid">solid</option>
+            <option value="double">double</option>
+            <option value="groove">groove</option>
+            <option value="ridge">ridge</option>
+            <option value="outset">outset</option>
+            <option value="mix">mix</option>
+          </select>
+        </div>
+        <hr />
+        <TextInput
+          label="Border right Color"
+          onChange={setCellBorderRightColor}
+          value={cellBorderRightColor}
+        />
+        <TextInput
+          label="Border right width"
+          onChange={setCellBorderRightWidth}
+          value={cellBorderRightWidth}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}>
+          <p>Border Right Style</p>
+          <select
+            id="Border right Style"
+            name="Border right Style"
+            style={{align: 'center', height: '50%', width: '50%'}}
+            value={cellBorderRightStyle}
+            onChange={(e) => setCellBorderRightStyle(e.target.value)}>
+            <option value="none">none</option>
+            <option value="dotted">dotted</option>
+            <option value="inset">inset</option>
+            <option value="solid">solid</option>
+            <option value="double">double</option>
+            <option value="groove">groove</option>
+            <option value="ridge">ridge</option>
+            <option value="outset">outset</option>
+            <option value="mix">mix</option>
+          </select>
+        </div>
+        <hr />
+        <TextInput
+          label="Border left Color"
+          onChange={setCellBorderLeftColor}
+          value={cellBorderLeftColor}
+        />
+        <TextInput
+          label="Border left width"
+          onChange={setCellBorderLeftWidth}
+          value={cellBorderLeftWidth}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}>
+          <p>Border Left Style</p>
+          <select
+            id="Border left Style"
+            name="Border left Style"
+            style={{align: 'center', height: '50%', width: '50%'}}
+            value={cellBorderLeftStyle}
+            onChange={(e) => setCellBorderLeftStyle(e.target.value)}>
+            <option value="none">none</option>
+            <option value="dotted">dotted</option>
+            <option value="inset">inset</option>
+            <option value="solid">solid</option>
+            <option value="double">double</option>
+            <option value="groove">groove</option>
+            <option value="ridge">ridge</option>
+            <option value="outset">outset</option>
+            <option value="mix">mix</option>
+          </select>
+        </div>
+
+        <button
+          className="item"
+          onClick={() =>
+            styleCellOptions(
+              cellStyle,
+              cellBackgroundColor,
+              topBorderCellStyle,
+              bottomBorderCellStyle,
+              rightBorderCellStyle,
+              leftBorderCellStyle,
+            )
+          }>
+          <span className="text">Set cell option</span>
+        </button>
+      </div>
       <hr />
       <button
         className="item"
@@ -382,6 +755,10 @@ function TableActionMenu({
         <span className="text">Delete table</span>
       </button>
       <hr />
+      {/* <input
+         value={headerBackgroundColor}
+         onChange={(e) => setHeaderBackgroundColor(e.target.value)}
+       /> */}
       <button className="item" onClick={() => toggleTableRowIsHeader()}>
         <span className="text">
           {(tableCellNode.__headerState & TableCellHeaderStates.ROW) ===

@@ -41,6 +41,8 @@ module.exports = {
           '<rootDir>/packages/lexical-react/src/LexicalAutoLinkPlugin.js',
         '^@lexical/react/LexicalAutoScrollPlugin$':
           '<rootDir>/packages/lexical-react/src/LexicalAutoScrollPlugin.js',
+        '^@lexical/react/LexicalCheckListPlugin$':
+          '<rootDir>/packages/lexical-react/src/LexicalCheckListPlugin.js',
         '^@lexical/react/LexicalCollaborationPlugin$':
           '<rootDir>/packages/lexical-react/src/LexicalCollaborationPlugin.js',
         '^@lexical/react/LexicalComposerContext$':
@@ -75,6 +77,8 @@ module.exports = {
         '^shared/getDOMSelection$':
           '<rootDir>/packages/shared/src/getDOMSelection.js',
         '^shared/invariant$': '<rootDir>/packages/shared/src/invariant.js',
+        '^shared/simpleDiffWithCursor$':
+          '<rootDir>/packages/shared/src/simpleDiffWithCursor.js',
         '^shared/useLayoutEffect$':
           '<rootDir>/packages/shared/src/useLayoutEffect.js',
         formatProdErrorMessage:

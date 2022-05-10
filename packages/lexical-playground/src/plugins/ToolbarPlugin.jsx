@@ -12,15 +12,11 @@ import type {LexicalEditor, RangeSelection} from 'lexical';
 
 import './ToolbarPlugin.css';
 
-import {
-  $createCodeNode,
-  $isCodeNode,
-  getCodeLanguages,
-  getDefaultCodeLanguage,
-} from '@lexical/code';
+import {$createCodeNode, $isCodeNode} from '@lexical/code';
 import {$isLinkNode, TOGGLE_LINK_COMMAND} from '@lexical/link';
 import {
   $isListNode,
+  INSERT_CHECK_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
   ListNode,
@@ -63,7 +59,7 @@ import {
   UNDO_COMMAND,
 } from 'lexical';
 import * as React from 'react';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 // $FlowFixMe
 import {createPortal} from 'react-dom';
 import {IS_APPLE} from 'shared/environment';
@@ -92,21 +88,48 @@ const supportedBlockTypes = new Set([
   'h1',
   'h2',
   'h3',
-  'ul',
-  'ol',
+  'bullet',
+  'number',
+  'check',
 ]);
 
 const blockTypeToBlockName = {
+  bullet: 'Bulleted List',
+  check: 'Check List',
   code: 'Code Block',
   h1: 'Heading 1',
   h2: 'Heading 2',
   h3: 'Heading 3',
   h4: 'Heading 4',
   h5: 'Heading 5',
-  ol: 'Numbered List',
+  number: 'Numbered List',
   paragraph: 'Normal',
   quote: 'Quote',
-  ul: 'Bulleted List',
+};
+
+const CODE_LANGUAGE_OPTIONS = [
+  ['', '- Select language -'],
+  ['c', 'C'],
+  ['clike', 'C-like'],
+  ['css', 'CSS'],
+  ['html', 'HTML'],
+  ['js', 'JavaScript'],
+  ['markdown', 'Markdown'],
+  ['objc', 'Objective-C'],
+  ['plain', 'Plain Text'],
+  ['py', 'Python'],
+  ['rust', 'Rust'],
+  ['sql', 'SQL'],
+  ['swift', 'Swift'],
+  ['xml', 'XML'],
+];
+
+const CODE_LANGUAGE_MAP = {
+  javascript: 'js',
+  md: 'markdown',
+  plaintext: 'plain',
+  python: 'py',
+  text: 'plain',
 };
 
 function getSelectedNode(selection: RangeSelection): TextNode | ElementNode {
@@ -421,9 +444,23 @@ function InsertTableDialog({
 }): React$Node {
   const [rows, setRows] = useState('5');
   const [columns, setColumns] = useState('5');
+  const [backgroundColorStyle, setBackgroundColorStyle] = useState('white');
+  const [borderTableStyle, setBorderTableStyle] = useState('');
+  const [borderColorStyle, setBorderColorStyle] = useState('black');
+  const [borderWidth, setBorderWidth] = useState('1');
+  const [borderStyle, setBorderStyle] = useState('solid');
+
+  useEffect(() => {
+    setBorderTableStyle(`${borderWidth}px ${borderStyle} ${borderColorStyle}`);
+  }, [borderWidth, borderStyle, borderColorStyle]);
 
   const onClick = () => {
-    activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {columns, rows});
+    activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {
+      backgroundColorStyle,
+      borderTableStyle,
+      columns,
+      rows,
+    });
     onClose();
   };
 
@@ -431,6 +468,45 @@ function InsertTableDialog({
     <>
       <TextInput label="No of rows" onChange={setRows} value={rows} />
       <TextInput label="No of columns" onChange={setColumns} value={columns} />
+      <TextInput
+        label="Background Color"
+        onChange={setBackgroundColorStyle}
+        value={backgroundColorStyle}
+      />
+      <TextInput
+        label="Border Color"
+        onChange={setBorderColorStyle}
+        value={borderColorStyle}
+      />
+      <TextInput
+        label="Border thickness"
+        onChange={setBorderWidth}
+        value={borderWidth}
+      />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}>
+        <p>Border Style</p>
+        <select
+          id="Border Style"
+          name="Border Style"
+          style={{align: 'center', height: '50%', width: '50%'}}
+          value={borderStyle}
+          onChange={(e) => setBorderStyle(e.target.value)}>
+          <option value="none">none</option>
+          <option value="dotted">dotted</option>
+          <option value="inset">inset</option>
+          <option value="solid">solid</option>
+          <option value="double">double</option>
+          <option value="groove">groove</option>
+          <option value="ridge">ridge</option>
+          <option value="outset">outset</option>
+          <option value="mix">mix</option>
+        </select>
+      </div>
       <div
         className="ToolbarPlugin__dialogActions"
         data-test-id="table-model-confirm-insert">
@@ -456,11 +532,7 @@ function InsertPollDialog({
 
   return (
     <>
-      <TextInput
-        label="Poll Question"
-        onChange={setQuestion}
-        value={question}
-      />
+      <TextInput label="Question" onChange={setQuestion} value={question} />
       <div className="ToolbarPlugin__dialogActions">
         <Button disabled={question.trim() === ''} onClick={onClick}>
           Confirm
@@ -608,15 +680,23 @@ function BlockFormatDropDown({
   };
 
   const formatBulletList = () => {
-    if (blockType !== 'ul') {
+    if (blockType !== 'bullet') {
       editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND);
     } else {
       editor.dispatchCommand(REMOVE_LIST_COMMAND);
     }
   };
 
+  const formatCheckList = () => {
+    if (blockType !== 'check') {
+      editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND);
+    } else {
+      editor.dispatchCommand(REMOVE_LIST_COMMAND);
+    }
+  };
+
   const formatNumberedList = () => {
-    if (blockType !== 'ol') {
+    if (blockType !== 'number') {
       editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND);
     } else {
       editor.dispatchCommand(REMOVE_LIST_COMMAND);
@@ -660,7 +740,7 @@ function BlockFormatDropDown({
       buttonClassName="toolbar-item block-controls"
       buttonIconClassName={'icon block-type ' + blockType}
       buttonLabel={blockTypeToBlockName[blockType]}
-      buttonAriaLabel="Formatting Options">
+      buttonAriaLabel="Formatting options for text style">
       <button className="item" onClick={formatParagraph}>
         <span className="icon paragraph" />
         <span className="text">Normal</span>
@@ -684,12 +764,17 @@ function BlockFormatDropDown({
       <button className="item" onClick={formatBulletList}>
         <span className="icon bullet-list" />
         <span className="text">Bullet List</span>
-        {blockType === 'ul' && <span className="active" />}
+        {blockType === 'bullet' && <span className="active" />}
       </button>
       <button className="item" onClick={formatNumberedList}>
         <span className="icon numbered-list" />
         <span className="text">Numbered List</span>
-        {blockType === 'ol' && <span className="active" />}
+        {blockType === 'number' && <span className="active" />}
+      </button>
+      <button className="item" onClick={formatCheckList}>
+        <span className="icon check-list" />
+        <span className="text">Check List</span>
+        {blockType === 'check' && <span className="active" />}
       </button>
       <button className="item" onClick={formatQuote}>
         <span className="icon quote" />
@@ -717,15 +802,14 @@ function Select({
 }: {
   className: string,
   onChange: (event: {target: {value: string}}) => void,
-  options: Array<string>,
+  options: Array<[string, string]>,
   value: string,
 }): React$Node {
   return (
     <select className={className} onChange={onChange} value={value}>
-      <option hidden={true} value="" />
-      {options.map((option) => (
+      {options.map(([option, text]) => (
         <option key={option} value={option}>
-          {option}
+          {text}
         </option>
       ))}
     </select>
@@ -744,6 +828,8 @@ export default function ToolbarPlugin(): React$Node {
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [isStrikethrough, setIsStrikethrough] = useState(false);
+  const [isSubscript, setIsSubscript] = useState(false);
+  const [isSuperscript, setIsSuperscript] = useState(false);
   const [isCode, setIsCode] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -767,6 +853,8 @@ export default function ToolbarPlugin(): React$Node {
       setIsItalic(selection.hasFormat('italic'));
       setIsUnderline(selection.hasFormat('underline'));
       setIsStrikethrough(selection.hasFormat('strikethrough'));
+      setIsSubscript(selection.hasFormat('subscript'));
+      setIsSuperscript(selection.hasFormat('superscript'));
       setIsCode(selection.hasFormat('code'));
       setIsRTL($isParentElementRTL(selection));
 
@@ -783,7 +871,9 @@ export default function ToolbarPlugin(): React$Node {
         setSelectedElementKey(elementKey);
         if ($isListNode(element)) {
           const parentList = $getNearestNodeOfType(anchorNode, ListNode);
-          const type = parentList ? parentList.getTag() : element.getTag();
+          const type = parentList
+            ? parentList.getListType()
+            : element.getListType();
           setBlockType(type);
         } else {
           const type = $isHeadingNode(element)
@@ -791,7 +881,10 @@ export default function ToolbarPlugin(): React$Node {
             : element.getType();
           setBlockType(type);
           if ($isCodeNode(element)) {
-            setCodeLanguage(element.getLanguage() || getDefaultCodeLanguage());
+            const language = element.getLanguage();
+            setCodeLanguage(
+              language ? CODE_LANGUAGE_MAP[language] || language : '',
+            );
             return;
           }
         }
@@ -878,7 +971,6 @@ export default function ToolbarPlugin(): React$Node {
     }
   }, [editor, isLink]);
 
-  const codeLanguges = useMemo(() => getCodeLanguages(), []);
   const onCodeLanguageSelect = useCallback(
     (e) => {
       activeEditor.update(() => {
@@ -930,7 +1022,7 @@ export default function ToolbarPlugin(): React$Node {
           <Select
             className="toolbar-item code-language"
             onChange={onCodeLanguageSelect}
-            options={codeLanguges}
+            options={CODE_LANGUAGE_OPTIONS}
             value={codeLanguage}
           />
           <i className="chevron-down inside" />
@@ -942,12 +1034,12 @@ export default function ToolbarPlugin(): React$Node {
               className="toolbar-item font-family"
               onChange={onFontFamilySelect}
               options={[
-                'Arial',
-                'Courier New',
-                'Georgia',
-                'Times New Roman',
-                'Trebuchet MS',
-                'Verdana',
+                ['Arial', 'Arial'],
+                ['Courier New', 'Courier New'],
+                ['Georgia', 'Georgia'],
+                ['Times New Roman', 'Times New Roman'],
+                ['Trebuchet MS', 'Trebuchet MS'],
+                ['Verdana', 'Verdana'],
               ]}
               value={fontFamily}
             />
@@ -958,17 +1050,17 @@ export default function ToolbarPlugin(): React$Node {
               className="toolbar-item font-size"
               onChange={onFontSizeSelect}
               options={[
-                '10px',
-                '11px',
-                '12px',
-                '13px',
-                '14px',
-                '15px',
-                '16px',
-                '17px',
-                '18px',
-                '19px',
-                '20px',
+                ['10px', '10px'],
+                ['11px', '11px'],
+                ['12px', '12px'],
+                ['13px', '13px'],
+                ['14px', '14px'],
+                ['15px', '15px'],
+                ['16px', '16px'],
+                ['17px', '17px'],
+                ['18px', '18px'],
+                ['19px', '19px'],
+                ['20px', '20px'],
               ]}
               value={fontSize}
             />
@@ -981,7 +1073,9 @@ export default function ToolbarPlugin(): React$Node {
             }}
             className={'toolbar-item spaced ' + (isBold ? 'active' : '')}
             title={IS_APPLE ? 'Bold (⌘B)' : 'Bold (Ctrl+B)'}
-            aria-label="Format Bold">
+            aria-label={`Format text as bold. Shortcut: ${
+              IS_APPLE ? '⌘B' : 'Ctrl+B'
+            }`}>
             <i className="format bold" />
           </button>
           <button
@@ -990,7 +1084,9 @@ export default function ToolbarPlugin(): React$Node {
             }}
             className={'toolbar-item spaced ' + (isItalic ? 'active' : '')}
             title={IS_APPLE ? 'Italic (⌘I)' : 'Italic (Ctrl+I)'}
-            aria-label="Format Italics">
+            aria-label={`Format text as italics. Shortcut: ${
+              IS_APPLE ? '⌘I' : 'Ctrl+I'
+            }`}>
             <i className="format italic" />
           </button>
           <button
@@ -999,37 +1095,25 @@ export default function ToolbarPlugin(): React$Node {
             }}
             className={'toolbar-item spaced ' + (isUnderline ? 'active' : '')}
             title={IS_APPLE ? 'Underline (⌘U)' : 'Underline (Ctrl+U)'}
-            aria-label="Format Underline">
+            aria-label={`Format text to underlined. Shortcut: ${
+              IS_APPLE ? '⌘U' : 'Ctrl+U'
+            }`}>
             <i className="format underline" />
-          </button>
-          <button
-            onClick={() => {
-              activeEditor.dispatchCommand(
-                FORMAT_TEXT_COMMAND,
-                'strikethrough',
-              );
-            }}
-            className={
-              'toolbar-item spaced ' + (isStrikethrough ? 'active' : '')
-            }
-            title="Strikethrough"
-            aria-label="Format Strikethrough">
-            <i className="format strikethrough" />
           </button>
           <button
             onClick={() => {
               activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
             }}
             className={'toolbar-item spaced ' + (isCode ? 'active' : '')}
-            title="Code"
-            aria-label="Insert Code">
+            title="Insert code block"
+            aria-label="Insert code block">
             <i className="format code" />
           </button>
           <button
             onClick={insertLink}
             className={'toolbar-item spaced ' + (isLink ? 'active' : '')}
-            title="Insert Link"
-            aria-label="Insert Link">
+            aria-label="Insert link"
+            type="Insert link">
             <i className="format link" />
           </button>
           {isLink &&
@@ -1037,10 +1121,59 @@ export default function ToolbarPlugin(): React$Node {
               <FloatingLinkEditor editor={activeEditor} />,
               document.body,
             )}
+          <DropDown
+            buttonClassName="toolbar-item spaced"
+            buttonLabel=""
+            buttonAriaLabel="Formatting options for additional text styles"
+            buttonIconClassName="icon dropdown-more">
+            <button
+              onClick={() => {
+                activeEditor.dispatchCommand(
+                  FORMAT_TEXT_COMMAND,
+                  'strikethrough',
+                );
+              }}
+              className={
+                'item ' + (isStrikethrough ? 'active dropdown-item-active' : '')
+              }
+              title="Strikethrough"
+              aria-label="Format text with a strikethrough">
+              <i className="icon strikethrough" />
+              <span className="text">Strikethrough</span>
+            </button>
+            <button
+              onClick={() => {
+                activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'subscript');
+              }}
+              className={
+                'item ' + (isSubscript ? 'active dropdown-item-active' : '')
+              }
+              title="Subscript"
+              aria-label="Format text with a subscript">
+              <i className="icon subscript" />
+              <span className="text">Subscript</span>
+            </button>
+            <button
+              onClick={() => {
+                activeEditor.dispatchCommand(
+                  FORMAT_TEXT_COMMAND,
+                  'superscript',
+                );
+              }}
+              className={
+                'item ' + (isSuperscript ? 'active dropdown-item-active' : '')
+              }
+              title="Superscript"
+              aria-label="Format text with a superscript">
+              <i className="icon superscript" />
+              <span className="text">Superscript</span>
+            </button>
+          </DropDown>
           <Divider />
           <DropDown
             buttonClassName="toolbar-item spaced"
             buttonLabel="Insert"
+            buttonAriaLabel="Insert specialized editor node"
             buttonIconClassName="icon plus">
             <button
               onClick={() => {
@@ -1166,7 +1299,8 @@ export default function ToolbarPlugin(): React$Node {
       <DropDown
         buttonLabel="Align"
         buttonIconClassName="icon left-align"
-        buttonClassName="toolbar-item spaced">
+        buttonClassName="toolbar-item spaced alignment"
+        buttonAriaLabel="Formatting options for text alignment">
         <button
           onClick={() => {
             activeEditor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'left');
@@ -1222,3 +1356,168 @@ export default function ToolbarPlugin(): React$Node {
     </div>
   );
 }
+
+// const [cellBackgroundColor, setCellBackgroundColor] = useState('white');
+// const [cellBorderColor, setCellBorderColor] = useState('black');
+// const [cellBorderStyle, setCellBorderStyle] = useState('solid');
+// const [cellBorderWidth, setCellBorderWidth] = useState('1');
+
+// const [cellBorderTopColor, setCellBorderTopColor] = useState('black');
+// const [cellBorderTopStyle, setCellBorderTopStyle] = useState('solid');
+// const [cellBorderTopWidth, setCellBorderTopWidth] = useState('1');
+
+// const [cellBorderBottomColor, setCellBorderBottomColor] = useState('black');
+// const [cellBorderBottomStyle, setCellBorderBottomStyle] = useState('solid');
+// const [cellBorderBottomWidth, setCellBorderBottomWidth] = useState('1');
+
+// const [cellBorderLeftColor, setCellBorderLeftColor] = useState('black');
+// const [cellBorderLeftStyle, setCellBorderLeftStyle] = useState('solid');
+// const [cellBorderLeftWidth, setCellBorderLeftWidth] = useState('1');
+
+// const [cellBorderRightColor, setCellBorderRightColor] = useState('black');
+// const [cellBorderRightStyle, setCellBorderRightStyle] = useState('solid');
+// const [cellBorderRightWidth, setCellBorderRightWidth] = useState('1');
+
+// const [cellBorderRadius, setCellBorderRadius] = useState('0');
+// const [cellBorderRadiusTopLeft, setCellBorderRadiusTopLeft] = useState('0');
+// const [cellBorderRadiusTopRight, setCellBorderRadiusTopRight] = useState('0');
+// const [cellBorderRadiusBottomLeft, setCellBorderRadiusBottomLeft] = useState('0');
+// const [cellBorderRadiusBottomRight, setCellBorderRadiusBottomRight] = useState('0');
+
+// const [cellPadding, setCellPadding] = useState('0');
+// const [cellPaddingTop, setCellPaddingTop] = useState('0');
+// const [cellPaddingBottom, setCellPaddingBottom] = useState('0');
+// const [cellPaddingLeft, setCellPaddingLeft] = useState('0');
+// const [cellPaddingRight, setCellPaddingRight] = useState('0');
+
+// const [cellMargin, setCellMargin] = useState('0');
+// const [cellMarginTop, setCellMarginTop] = useState('0');
+// const [cellMarginBottom, setCellMarginBottom] = useState('0');
+// const [cellMarginLeft, setCellMarginLeft] = useState('0');
+// const [cellMarginRight, setCellMarginRight] = useState('0');
+
+// const [cellStyle, setCellStyle] = useState(
+//   `${cellBorderWidth}px ${cellBorderStyle} ${cellBorderColor}`,
+// );
+// const [topBorderCellStyle, setTopBorderCellStyle] = useState(`${cellBorderTopWidth}px ${cellBorderTopStyle} ${cellBorderTopColor}`);
+// const [bottomBorderCellStyle, setBottomBorderCellStyle] = useState('')
+// const [leftBorderCellStyle, setLeftBorderCellStyle] = useState('')
+// const [rightBorderCellStyle, setRightBorderCellStyle] = useState('')
+// useEffect(() => {
+//   setCellStyle(`${cellBorderWidth}px ${cellBorderStyle} ${cellBorderColor}`);
+// }, [cellBorderWidth, cellBorderStyle, cellBorderColor]);
+
+// return createPortal(
+//   // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+//   <div
+//     className="dropdown"
+//     ref={dropDownRef}
+//     onClick={(e) => {
+//       e.stopPropagation();
+//     }}>
+//     <button className="item" onClick={() => insertTableRowAtSelection(false)}>
+//       <span className="text">
+//         Insert{' '}
+//         {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
+//         above
+//       </span>
+//     </button>
+//     <button className="item" onClick={() => insertTableRowAtSelection(true)}>
+//       <span className="text">
+//         Insert{' '}
+//         {selectionCounts.rows === 1 ? 'row' : `${selectionCounts.rows} rows`}{' '}
+//         below
+//       </span>
+//     </button>
+//     <hr />
+//     <button className="item" onClick={() => mergeRightCell(true)}>
+//       <span className="text">
+//         MergeCell right avec des bordures JAUNES DOTTES DE 3 px et un fond
+//         rouge
+//       </span>
+//     </button>
+//     <hr />
+//     <div>
+//       <TextInput
+//         label="Background Color"
+//         onChange={setCellBackgroundColor}
+//         value={cellBackgroundColor}
+//       />
+//       <TextInput
+//         label="Border Color"
+//         onChange={setCellBorderColor}
+//         value={cellBorderColor}
+//       />
+//       <TextInput
+//         label="Border thickness"
+//         onChange={setCellBorderWidth}
+//         value={cellBorderWidth}
+//       />
+//       <div
+//         style={{
+//           display: 'flex',
+//           justifyContent: 'space-between',
+//           width: '100%',
+//         }}>
+//         <p>Border Style</p>
+//         <select
+//           id="Border Style"
+//           name="Border Style"
+//           style={{align: 'center', height: '50%', width: '50%'}}
+//           value={cellBorderStyle}
+//           onChange={(e) => setCellBorderStyle(e.target.value)}>
+//           <option value="none">none</option>
+//           <option value="dotted">dotted</option>
+//           <option value="inset">inset</option>
+//           <option value="solid">solid</option>
+//           <option value="double">double</option>
+//           <option value="groove">groove</option>
+//           <option value="ridge">ridge</option>
+//           <option value="outset">outset</option>
+//           <option value="mix">mix</option>
+//         </select>
+//       </div>
+//     <hr />
+//     <div>
+//       <TextInput
+//         label="Border Top Color"
+//         onChange={setCellBorderTopColor}
+//         value={cellBorderTopColor}
+//       />
+//       <TextInput
+//         label="Border top width"
+//         onChange={setCellBorderTopWidth}
+//         value={cellBorderTopWidth}
+//       />
+//       <div
+//         style={{
+//           display: 'flex',
+//           justifyContent: 'space-between',
+//           width: '100%',
+//         }}>
+//         <p>Border Top Style</p>
+//         <select
+//           id="Border Top Style"
+//           name="Border Top Style"
+//           style={{align: 'center', height: '50%', width: '50%'}}
+//           value={cellBorderTopStyle}
+//           onChange={(e) => setCellBorderTopStyle(e.target.value)}>
+//           <option value="none">none</option>
+//           <option value="dotted">dotted</option>
+//           <option value="inset">inset</option>
+//           <option value="solid">solid</option>
+//           <option value="double">double</option>
+//           <option value="groove">groove</option>
+//           <option value="ridge">ridge</option>
+//           <option value="outset">outset</option>
+//           <option value="mix">mix</option>
+//         </select>
+//       </div>
+
+//       <button
+//         className="item"
+//         onClick={() => styleCellOptions(cellStyle, cellBackgroundColor, topBorderCellStyle)}>
+//         <span className="text">Set cell option</span>
+//       </button>
+//     </div>
+//     <hr />

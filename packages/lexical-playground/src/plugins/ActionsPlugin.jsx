@@ -9,14 +9,18 @@
 
 import type {LexicalEditor} from 'lexical';
 
+import {$createCodeNode, $isCodeNode} from '@lexical/code';
 import {exportFile, importFile} from '@lexical/file';
-import {$convertFromMarkdownString} from '@lexical/markdown';
+import {
+  $convertFromMarkdownString,
+  $convertToMarkdownString,
+} from '@lexical/markdown';
 import {useCollaborationContext} from '@lexical/react/LexicalCollaborationPlugin';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
-import {$createHorizontalRuleNode} from '@lexical/react/LexicalHorizontalRuleNode';
 import {mergeRegister} from '@lexical/utils';
 import {CONNECTED_COMMAND, TOGGLE_CONNECT_COMMAND} from '@lexical/yjs';
 import {
+  $createTextNode,
   $getRoot,
   $isParagraphNode,
   CLEAR_EDITOR_COMMAND,
@@ -27,6 +31,7 @@ import {useCallback, useEffect, useState} from 'react';
 
 import useModal from '../hooks/useModal';
 import Button from '../ui/Button';
+import {PLAYGROUND_TRANSFORMERS} from './MarkdownTransformers';
 import {
   SPEECH_TO_TEXT_COMMAND,
   SUPPORT_SPEECH_RECOGNITION,
@@ -83,30 +88,23 @@ export default function ActionsPlugin({
     });
   }, [editor]);
 
-  const convertFromMarkdown = useCallback(() => {
+  const handleMarkdownToggle = useCallback(() => {
     editor.update(() => {
       const root = $getRoot();
-      const children = root.getChildren();
-      const count = children.length;
-      let markdownString = '';
-
-      for (let i = 0; i < count; i++) {
-        const child = children[i];
-        if ($isParagraphNode(child)) {
-          if (markdownString.length) {
-            markdownString += '\n';
-          }
-          const text = child.getTextContent();
-          if (text.length) {
-            markdownString += text;
-          }
-        }
+      const firstChild = root.getFirstChild();
+      if ($isCodeNode(firstChild) && firstChild.getLanguage() === 'markdown') {
+        $convertFromMarkdownString(
+          firstChild.getTextContent(),
+          PLAYGROUND_TRANSFORMERS,
+        );
+      } else {
+        const markdown = $convertToMarkdownString(PLAYGROUND_TRANSFORMERS);
+        root
+          .clear()
+          .append(
+            $createCodeNode('markdown').append($createTextNode(markdown)),
+          );
       }
-      $convertFromMarkdownString(
-        markdownString,
-        editor,
-        $createHorizontalRuleNode,
-      );
       root.selectEnd();
     });
   }, [editor]);
@@ -123,8 +121,10 @@ export default function ActionsPlugin({
             'action-button action-button-mic ' +
             (isSpeechToText ? 'active' : '')
           }
-          title="Mic"
-          aria-label="Mic">
+          title="Speect To Text"
+          aria-label={`${
+            isSpeechToText ? 'Enable' : 'Disable'
+          } speect to text`}>
           <i className="mic" />
         </button>
       )}
@@ -132,7 +132,7 @@ export default function ActionsPlugin({
         className="action-button import"
         onClick={() => importFile(editor)}
         title="Import"
-        aria-label="Import">
+        aria-label="Import editor state from JSON">
         <i className="import" />
       </button>
       <button
@@ -144,7 +144,7 @@ export default function ActionsPlugin({
           })
         }
         title="Export"
-        aria-label="Export">
+        aria-label="Export editor state to JSON">
         <i className="export" />
       </button>
       <button
@@ -156,7 +156,7 @@ export default function ActionsPlugin({
           ));
         }}
         title="Clear"
-        aria-label="Clear">
+        aria-label="Clear editor contents">
         <i className="clear" />
       </button>
       <button
@@ -164,15 +164,15 @@ export default function ActionsPlugin({
         onClick={() => {
           editor.setReadOnly(!editor.isReadOnly());
         }}
-        title={isReadOnly ? 'Unlock' : 'Lock'}
-        aria-label={isReadOnly ? 'Unlock' : 'Lock'}>
+        title="Read-Only Mode"
+        aria-label={`${isReadOnly ? 'Unlock' : 'Lock'} read-only mode`}>
         <i className={isReadOnly ? 'unlock' : 'lock'} />
       </button>
       <button
         className="action-button"
-        onClick={convertFromMarkdown}
-        title="Markdown"
-        aria-label="Markdown">
+        onClick={handleMarkdownToggle}
+        title="Convert From Markdown"
+        aria-label="Convert from markdown">
         <i className="markdown" />
       </button>
       {isCollab && (
@@ -181,8 +181,12 @@ export default function ActionsPlugin({
           onClick={() => {
             editor.dispatchCommand(TOGGLE_CONNECT_COMMAND, !connected);
           }}
-          title={connected ? 'Disconnect' : 'Connect'}
-          aria-label={connected ? 'Disconnect' : 'Connect'}>
+          title={`${
+            connected ? 'Disconnect' : 'Connect'
+          } Collaborative Editing`}
+          aria-label={`${
+            connected ? 'Disconnect from' : 'Connect to'
+          } a collaborative editing server`}>
           <i className={connected ? 'disconnect' : 'connect'} />
         </button>
       )}

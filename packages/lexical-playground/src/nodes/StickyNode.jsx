@@ -26,7 +26,7 @@ import {
   DecoratorNode,
 } from 'lexical';
 import * as React from 'react';
-import {useCallback, useEffect, useRef} from 'react';
+import {useEffect, useRef} from 'react';
 // $FlowFixMe
 import {createPortal} from 'react-dom';
 import useLayoutEffect from 'shared/useLayoutEffect';
@@ -146,7 +146,7 @@ function StickyComponent({
     }
   }, []);
 
-  const handlePointerMove = useCallback((event: PointerEvent) => {
+  const handlePointerMove = (event: PointerEvent) => {
     const stickyContainer = stickyContainerRef.current;
     const positioning = positioningRef.current;
     const rootElementRect = positioning.rootElementRect;
@@ -159,100 +159,111 @@ function StickyComponent({
       positioning.y = event.pageY - positioning.offsetY - rootElementRect.top;
       positionSticky(stickyContainer, positioning);
     }
-  }, []);
+  };
 
-  const handlePointerUp = useCallback(
-    (event: PointerEvent) => {
-      const stickyContainer = stickyContainerRef.current;
-      const positioning = positioningRef.current;
-      if (stickyContainer !== null) {
-        positioning.isDragging = false;
-        stickyContainer.classList.remove('dragging');
-        editor.update(() => {
-          const node = $getNodeByKey(nodeKey);
-          if ($isStickyNode(node)) {
-            node.setPosition(positioning.x, positioning.y);
-          }
-        });
-      }
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerUp);
-    },
-    [editor, handlePointerMove, nodeKey],
-  );
+  const handlePointerUp = (event: PointerEvent) => {
+    const stickyContainer = stickyContainerRef.current;
+    const positioning = positioningRef.current;
+    if (stickyContainer !== null) {
+      positioning.isDragging = false;
+      stickyContainer.classList.remove('dragging');
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey);
+        if ($isStickyNode(node)) {
+          node.setPosition(positioning.x, positioning.y);
+        }
+      });
+    }
+    document.removeEventListener('pointermove', handlePointerMove);
+    document.removeEventListener('pointerup', handlePointerUp);
+  };
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = () => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if ($isStickyNode(node)) {
         node.remove();
       }
     });
-  }, [editor, nodeKey]);
+  };
 
-  const handleColorChange = useCallback(() => {
+  const handleColorChange = () => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if ($isStickyNode(node)) {
         node.toggleColor();
       }
     });
-  }, [editor, nodeKey]);
+  };
 
   const {historyState} = useSharedHistoryContext();
 
   return (
-    <div
-      ref={stickyContainerRef}
-      className={`sticky-note ${color}`}
-      onPointerDown={(event) => {
-        if (event.button === 2 || event.target !== stickyContainerRef.current) {
-          // Right click or click on editor should not work
-          return;
-        }
-        const stickContainer = stickyContainerRef.current;
-        const positioning = positioningRef.current;
-        if (stickContainer !== null) {
-          const {top, left} = stickContainer.getBoundingClientRect();
-          positioning.offsetX = event.clientX - left + 30;
-          positioning.offsetY = event.clientY - top + 20;
-          positioning.isDragging = true;
-          stickContainer.classList.add('dragging');
-          document.addEventListener('pointermove', handlePointerMove);
-          document.addEventListener('pointerup', handlePointerUp);
-          event.preventDefault();
-        }
-      }}>
-      <button onClick={handleDelete} className="delete">
-        X
-      </button>
-      <button onClick={handleColorChange} className="color">
-        <i className="bucket" />
-      </button>
-      <LexicalNestedComposer
-        initialEditor={caption}
-        initialTheme={StickyEditorTheme}>
-        {isCollab ? (
-          <CollaborationPlugin
-            id={caption.getKey()}
-            providerFactory={createWebsocketProvider}
-            shouldBootstrap={true}
+    <div ref={stickyContainerRef} className="sticky-note-container">
+      <div
+        className={`sticky-note ${color}`}
+        onPointerDown={(event) => {
+          const stickyContainer = stickyContainerRef.current;
+          if (
+            stickyContainer == null ||
+            event.button === 2 ||
+            event.target !== stickyContainer.firstChild
+          ) {
+            // Right click or click on editor should not work
+            return;
+          }
+          const stickContainer = stickyContainer;
+          const positioning = positioningRef.current;
+          if (stickContainer !== null) {
+            const {top, left} = stickContainer.getBoundingClientRect();
+            positioning.offsetX = event.clientX - left;
+            positioning.offsetY = event.clientY - top;
+            positioning.isDragging = true;
+            stickContainer.classList.add('dragging');
+            document.addEventListener('pointermove', handlePointerMove);
+            document.addEventListener('pointerup', handlePointerUp);
+            event.preventDefault();
+          }
+        }}>
+        <button
+          onClick={handleDelete}
+          className="delete"
+          aria-label="Delete sticky note"
+          type="Delete">
+          X
+        </button>
+        <button
+          onClick={handleColorChange}
+          className="color"
+          aria-label="Change sticky note color"
+          type="Color">
+          <i className="bucket" />
+        </button>
+        <LexicalNestedComposer
+          initialEditor={caption}
+          initialTheme={StickyEditorTheme}>
+          {isCollab ? (
+            <CollaborationPlugin
+              id={caption.getKey()}
+              providerFactory={createWebsocketProvider}
+              shouldBootstrap={true}
+            />
+          ) : (
+            <HistoryPlugin externalHistoryState={historyState} />
+          )}
+          <PlainTextPlugin
+            contentEditable={
+              <ContentEditable className="StickyNode__contentEditable" />
+            }
+            placeholder={
+              <Placeholder className="StickyNode__placeholder">
+                What's up?
+              </Placeholder>
+            }
+            initialEditorState={null}
           />
-        ) : (
-          <HistoryPlugin externalHistoryState={historyState} />
-        )}
-        <PlainTextPlugin
-          contentEditable={
-            <ContentEditable className="StickyNode__contentEditable" />
-          }
-          placeholder={
-            <Placeholder className="StickyNode__placeholder">
-              What's up?
-            </Placeholder>
-          }
-          initialEditorState={null}
-        />
-      </LexicalNestedComposer>
+        </LexicalNestedComposer>
+      </div>
     </div>
   );
 }

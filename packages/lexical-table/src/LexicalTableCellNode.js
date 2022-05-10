@@ -37,6 +37,8 @@ export type TableCellHeaderState = $Values<typeof TableCellHeaderStates>;
 export class TableCellNode extends GridCellNode {
   __headerState: TableCellHeaderState;
   __width: ?number;
+  __backgroundColorStyle: ?string;
+  __cell: ?TableCell;
 
   static getType(): 'tablecell' {
     return 'tablecell';
@@ -48,6 +50,8 @@ export class TableCellNode extends GridCellNode {
       node.__colSpan,
       node.__width,
       node.__key,
+      node.__backgroundColorStyle,
+      node.__cell,
     );
   }
 
@@ -68,11 +72,17 @@ export class TableCellNode extends GridCellNode {
     headerState?: TableCellHeaderState = TableCellHeaderStates.NO_STATUS,
     colSpan?: number = 1,
     width?: ?number,
+    backgroundColorStyle?: ?string,
+    borderStyle?: ?string,
+    cell?: ?TableCell,
     key?: NodeKey,
   ): void {
     super(colSpan, key);
     this.__headerState = headerState;
     this.__width = width;
+    this.__backgroundColorStyle = backgroundColorStyle;
+    this.__borderStyle = borderStyle;
+    this.__cell = cell;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
@@ -81,6 +91,17 @@ export class TableCellNode extends GridCellNode {
     if (this.__width) {
       element.style.width = `${this.__width}px`;
     }
+
+    if (this.__cell) {
+      console.log('setATt', this.__cell);
+      element.setAttribute('rowspan', this.__cell);
+    }
+    if (this.__backgroundColorStyle) {
+      element.style.backgroundColor = `${this.__backgroundColorStyle}`;
+    }
+    // if (this.__borderStyle) {
+    //   element.style.border = `${this.__borderStyle}`;
+    // }
 
     addClassNamesToElement(
       element,
@@ -134,6 +155,21 @@ export class TableCellNode extends GridCellNode {
     self.__width = width;
     return this.__width;
   }
+  setBackgroundColor(backgroundColorStyle: string): ?string {
+    const self = this.getWritable();
+    self.__backgroundColorStyle = backgroundColorStyle;
+    return this.backgroundColorStyle;
+  }
+  // setBorderStyle(borderStyle: string): ?string {
+  //   const self = this.getWritable();
+  //   self.__borderStyle = borderStyle;
+  //   return this.borderStyle;
+  // }
+  mergeCellRight(cell: string): ?string {
+    const self = this.getWritable();
+    self.__cell = cell;
+    return this.cell;
+  }
 
   getWidth(): ?number {
     return this.getLatest().__width;
@@ -175,6 +211,10 @@ export class TableCellNode extends GridCellNode {
   canBeEmpty(): false {
     return false;
   }
+
+  canIndent(): false {
+    return false;
+  }
 }
 
 export function convertTableCellNodeElement(
@@ -211,9 +251,19 @@ export function convertTableCellNodeElement(
 export function $createTableCellNode(
   headerState: TableCellHeaderState,
   colSpan?: number = 1,
+  backgroundColorStyle?: ?string,
+  borderStyle?: ?string,
   width?: ?number,
+  cell?: ?string,
 ): TableCellNode {
-  return new TableCellNode(headerState, colSpan, width);
+  return new TableCellNode(
+    headerState,
+    colSpan,
+    width,
+    backgroundColorStyle,
+    borderStyle,
+    cell,
+  );
 }
 
 export function $isTableCellNode(node: ?LexicalNode): boolean %checks {

@@ -38,7 +38,7 @@ const config = {
           showReadingTime: true, // TODO: Update when directory finalized
         },
         docs: {
-          editUrl: `${GITHUB_REPO_URL}/tree/main/packages/lexical-website-new/docs/`,
+          editUrl: `${GITHUB_REPO_URL}/tree/main/packages/lexical-website-new/`,
           remarkPlugins: [importPlugin],
           // TODO: Update when directory finalized
           sidebarPath: require.resolve('./sidebars.js'),
@@ -56,8 +56,14 @@ const config = {
   tagline: 'An extensible text editor framework that does things differently',
 
   themeConfig:
-    /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
+    /** @type {import('@docusaurus/preset-classic').ThemeConfig & import('@docusaurus/theme-search-algolia').ThemeConfig} */
     ({
+      algolia: {
+        apiKey: '00b99bc61a623e1abd819b1d655da918',
+        appId: 'YRGKJK6OMH',
+        contextualSearch: true,
+        indexName: 'lexical',
+      },
       footer: {
         copyright: `Copyright © ${new Date().getFullYear()} Meta Platforms, Inc. Built with Docusaurus.`,
         links: [

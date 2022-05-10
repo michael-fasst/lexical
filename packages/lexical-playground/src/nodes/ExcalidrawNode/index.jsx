@@ -26,6 +26,7 @@ import {
 import * as React from 'react';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
+import ImageResizer from '../../ui/ImageResizer';
 import ExcalidrawImage from './ExcalidrawImage';
 import ExcalidrawModal from './ExcalidrawModal';
 
@@ -40,9 +41,11 @@ function ExcalidrawComponent({
   const [isModalOpen, setModalOpen] = useState<boolean>(
     data === '[]' && !editor.isReadOnly(),
   );
+  const imageContainerRef = useRef<HTMLElement | null>(null);
   const buttonRef = useRef<HTMLElement | null>(null);
   const [isSelected, setSelected, clearSelection] =
     useLexicalNodeSelection(nodeKey);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
 
   const onDelete = useCallback(
     (payload) => {
@@ -66,6 +69,8 @@ function ExcalidrawComponent({
   useEffect(() => {
     if (isModalOpen) {
       editor.setReadOnly(true);
+    } else {
+      editor.setReadOnly(false);
     }
   }, [isModalOpen, editor]);
 
@@ -77,6 +82,11 @@ function ExcalidrawComponent({
           const buttonElem = buttonRef.current;
           // $FlowFixMe: this will work
           const eventTarget: Element = event.target;
+
+          if (isResizing) {
+            return true;
+          }
+
           if (buttonElem !== null && buttonElem.contains(eventTarget)) {
             if (!event.shiftKey) {
               clearSelection();
@@ -103,9 +113,10 @@ function ExcalidrawComponent({
         COMMAND_PRIORITY_LOW,
       ),
     );
-  }, [clearSelection, editor, isSelected, onDelete, setSelected]);
+  }, [clearSelection, editor, isSelected, isResizing, onDelete, setSelected]);
 
   const deleteNode = useCallback(() => {
+    setModalOpen(false);
     return editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if ($isExcalidrawNode(node)) {
@@ -114,27 +125,34 @@ function ExcalidrawComponent({
     });
   }, [editor, nodeKey]);
 
-  const setData = useCallback(
-    (newData: $ReadOnlyArray<ExcalidrawElementFragment>) => {
-      if (editor.isReadOnly()) {
-        return;
-      }
-      return editor.update(() => {
-        const node = $getNodeByKey(nodeKey);
-        if ($isExcalidrawNode(node)) {
-          if (newData.length > 0) {
-            node.setData(JSON.stringify(newData));
-          } else {
-            node.remove();
-          }
+  const setData = (newData: $ReadOnlyArray<ExcalidrawElementFragment>) => {
+    if (editor.isReadOnly()) {
+      return;
+    }
+    return editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if ($isExcalidrawNode(node)) {
+        if (newData.length > 0) {
+          node.setData(JSON.stringify(newData));
+        } else {
+          node.remove();
         }
-      });
-    },
-    [editor, nodeKey],
-  );
+      }
+    });
+  };
+
+  const onResizeStart = () => {
+    setIsResizing(true);
+  };
+
+  const onResizeEnd = (nextWidth, nextHeight) => {
+    // Delay hiding the resize bars for click case
+    setTimeout(() => {
+      setIsResizing(false);
+    }, 200);
+  };
 
   const elements = useMemo(() => JSON.parse(data), [data]);
-
   return (
     <>
       <ExcalidrawModal
@@ -150,11 +168,26 @@ function ExcalidrawComponent({
           setData(newData);
           setModalOpen(false);
         }}
+        closeOnClickOutside={true}
       />
       <button
         ref={buttonRef}
         className={`excalidraw-button ${isSelected ? 'selected' : ''}`}>
-        <ExcalidrawImage className="image" elements={elements} />
+        <ExcalidrawImage
+          imageContainerRef={imageContainerRef}
+          className="image"
+          elements={elements}
+        />
+        {(isSelected || isResizing) && (
+          <ImageResizer
+            showCaption={true}
+            setShowCaption={() => {}}
+            imageRef={imageContainerRef}
+            editor={editor}
+            onResizeStart={onResizeStart}
+            onResizeEnd={onResizeEnd}
+          />
+        )}
       </button>
     </>
   );

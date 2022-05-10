@@ -31,6 +31,7 @@ declare export var KEY_ARROW_LEFT_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ARROW_UP_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ARROW_DOWN_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ENTER_COMMAND: LexicalCommand<KeyboardEvent | null>;
+declare export var KEY_SPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_BACKSPACE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_ESCAPE_COMMAND: LexicalCommand<KeyboardEvent>;
 declare export var KEY_DELETE_COMMAND: LexicalCommand<KeyboardEvent>;
@@ -41,6 +42,7 @@ declare export var OUTDENT_CONTENT_COMMAND: LexicalCommand<void>;
 declare export var DROP_COMMAND: LexicalCommand<DragEvent>;
 declare export var FORMAT_ELEMENT_COMMAND: LexicalCommand<ElementFormatType>;
 declare export var DRAGSTART_COMMAND: LexicalCommand<DragEvent>;
+declare export var DRAGEND_COMMAND: LexicalCommand<DragEvent>;
 declare export var COPY_COMMAND: LexicalCommand<ClipboardEvent>;
 declare export var CUT_COMMAND: LexicalCommand<ClipboardEvent>;
 declare export var CLEAR_EDITOR_COMMAND: LexicalCommand<void>;
@@ -130,6 +132,7 @@ declare export class LexicalEditor {
   _observer: null | MutationObserver;
   _key: string;
   _readOnly: boolean;
+  _headless: boolean;
   isComposing(): boolean;
   registerUpdateListener(listener: UpdateListener): () => void;
   registerRootListener(listener: RootListener): () => void;
@@ -149,7 +152,7 @@ declare export class LexicalEditor {
     klass: Class<T>,
     listener: Transform<T>,
   ): () => void;
-  dispatchCommand<P>(command: LexicalCommand<P>, payload?: P): boolean;
+  dispatchCommand<P>(command: LexicalCommand<P>, payload: P): boolean;
   hasNodes(nodes: Array<Class<LexicalNode>>): boolean;
   getKey(): string;
   getDecorators<X>(): {
@@ -160,7 +163,9 @@ declare export class LexicalEditor {
   getElementByKey(key: NodeKey): null | HTMLElement;
   getEditorState(): EditorState;
   setEditorState(editorState: EditorState, options?: EditorSetOptions): void;
-  parseEditorState(stringifiedEditorState: string): EditorState;
+  parseEditorState(
+    maybeStringifiedEditorState: string | ParsedEditorState,
+  ): EditorState;
   update(updateFn: () => void, options?: EditorUpdateOptions): boolean;
   focus(callbackFn?: () => void): void;
   blur(): void;
@@ -184,6 +189,8 @@ type TextNodeThemeClasses = {
   underlineStrikethrough?: EditorThemeClassName,
   italic?: EditorThemeClassName,
   code?: EditorThemeClassName,
+  subscript?: EditorThemeClassName,
+  superscript?: EditorThemeClassName,
 };
 export type EditorThemeClasses = {
   ltr?: EditorThemeClassName,
@@ -198,6 +205,8 @@ export type EditorThemeClasses = {
     ol?: EditorThemeClassName,
     olDepth?: Array<EditorThemeClassName>,
     listitem?: EditorThemeClassName,
+    listitemChecked?: EditorThemeClassName,
+    listitemUnchecked?: EditorThemeClassName,
     nested?: {
       list?: EditorThemeClassName,
       listitem?: EditorThemeClassName,
@@ -207,6 +216,7 @@ export type EditorThemeClasses = {
   tableRow?: EditorThemeClassName,
   tableCell?: EditorThemeClassName,
   tableCellHeader?: EditorThemeClassName,
+  mark?: EditorThemeClassName,
   link?: EditorThemeClassName,
   quote?: EditorThemeClassName,
   code?: EditorThemeClassName,
@@ -346,7 +356,6 @@ declare export class LexicalNode {
   isParentOf(targetNode: LexicalNode): boolean;
   getNodesBetween(targetNode: LexicalNode): Array<LexicalNode>;
   isDirty(): boolean;
-  isComposing(): boolean;
   // $FlowFixMe
   getLatest<T: LexicalNode>(this: T): T;
   // $FlowFixMe
@@ -422,19 +431,14 @@ export type GridSelectionShape = {
 };
 declare export class GridSelection implements BaseSelection {
   gridKey: NodeKey;
-  anchorCellKey: NodeKey;
   anchor: PointType;
-  focusCellKey: NodeKey;
   focus: PointType;
   dirty: boolean;
-  constructor(
-    gridKey: NodeKey,
-    anchorCellKey: NodeKey,
-    focusCellKey: NodeKey,
-  ): void;
+  constructor(gridKey: NodeKey, anchor: PointType, focus: PointType): void;
   is(selection: null | RangeSelection | NodeSelection | GridSelection): boolean;
   set(gridKey: NodeKey, anchorCellKey: NodeKey, focusCellKey: NodeKey): void;
   clone(): GridSelection;
+  getCharacterOffsets(): [number, number];
   extract(): Array<LexicalNode>;
   insertRawText(): void;
   insertText(): void;
@@ -511,6 +515,7 @@ declare export class RangeSelection implements BaseSelection {
   insertNodes(nodes: Array<LexicalNode>, selectStart?: boolean): boolean;
   insertParagraph(): void;
   insertLineBreak(selectStart?: boolean): void;
+  getCharacterOffsets(): [number, number];
   extract(): Array<LexicalNode>;
   modify(
     alter: 'move' | 'extend',
@@ -542,7 +547,6 @@ type ElementPointType = {
   isBefore: (PointType) => boolean,
   getNode: () => ElementNode,
   set: (key: NodeKey, offset: number, type: 'text' | 'element') => void,
-  getCharacterOffset: () => number,
   isAtNodeEnd: () => boolean,
 };
 export type Point = PointType;
@@ -554,7 +558,6 @@ declare class _Point {
   constructor(key: NodeKey, offset: number, type: 'text' | 'element'): void;
   is(point: PointType): boolean;
   isBefore(b: PointType): boolean;
-  getCharacterOffset(): number;
   getNode(): LexicalNode;
   set(key: NodeKey, offset: number, type: 'text' | 'element'): void;
 }
@@ -601,6 +604,7 @@ declare export class TextNode extends LexicalNode {
   constructor(text: string, key?: NodeKey): void;
   getFormat(): number;
   getStyle(): string;
+  isComposing(): boolean;
   isToken(): boolean;
   isSegmented(): boolean;
   isInert(): boolean;
@@ -723,11 +727,17 @@ declare export class ElementNode extends LexicalNode {
   setIndent(indentLevel: number): this;
   insertNewAfter(selection: RangeSelection): null | LexicalNode;
   canInsertTab(): boolean;
+  canIndent(): boolean;
   collapseAtStart(selection: RangeSelection): boolean;
-  excludeFromCopy(): boolean;
+  excludeFromCopy(destination: 'clone' | 'html'): boolean;
   canExtractContents(): boolean;
   canReplaceWith(replacement: LexicalNode): boolean;
   canInsertAfter(node: LexicalNode): boolean;
+  extractWithChild(
+    child: LexicalNode,
+    selection: RangeSelection | NodeSelection | GridSelection,
+    destination: 'clone' | 'html',
+  ): boolean;
   canBeEmpty(): boolean;
   canInsertTextBefore(): boolean;
   canInsertTextAfter(): boolean;

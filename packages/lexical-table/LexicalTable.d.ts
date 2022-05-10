@@ -54,7 +54,6 @@ export declare class TableCellNode extends ElementNode {
   insertNewAfter(
     selection: RangeSelection,
   ): null | ParagraphNode | TableCellNode;
-  canInsertTab(): true;
   collapseAtStart(): true;
   getTag(): string;
   setHeaderState(headerState: TableCellHeaderState): TableCellHeaderState;
@@ -62,6 +61,8 @@ export declare class TableCellNode extends ElementNode {
   toggleHeaderState(headerState: TableCellHeaderState): TableCellNode;
   hasHeader(): boolean;
   setWidth(width: number): ?number;
+  setBackgroundColor(backgroundColorStyle: string): ?string;
+  mergeCellRight(cell: string): ?string;
   getWidth(): ?number;
   updateDOM(prevNode: TableCellNode): boolean;
   collapseAtStart(): true;
@@ -83,7 +84,6 @@ export declare class TableNode extends ElementNode {
   createDOM(config: EditorConfig): HTMLElement;
   updateDOM(prevNode: TableNode, dom: HTMLElement): boolean;
   insertNewAfter(selection: RangeSelection): null | ParagraphNode | TableNode;
-  canInsertTab(): true;
   collapseAtStart(): true;
   getCordsFromCellNode(tableCellNode: TableCellNode): {x: number; y: number};
   getCellFromCords(x: number, y: number, grid: Grid): ?Cell;
@@ -92,9 +92,14 @@ export declare class TableNode extends ElementNode {
   getCellNodeFromCordsOrThrow(x: number, y: number): TableCellNode;
   setGrid(grid?: Grid): TableNode;
   getGrid(): Grid | null;
+  setBackgroundColor(backgroundColorStyle: string): ?string;
+  setBorderStyle(borderStyle: string): ?string;
   canSelectBefore(): true;
 }
-declare function $createTableNode(): TableNode;
+declare function $createTableNode(
+  backgroundColorStyle: string,
+  borderTableStyle: string,
+): TableNode;
 declare function $isTableNode(node?: LexicalNode): node is TableNode;
 
 /**
@@ -111,8 +116,8 @@ declare class TableRowNode extends ElementNode {
     selection: RangeSelection,
   ): null | ParagraphNode | TableRowNode;
   setHeight(height: number): ?number;
+  setBorderTableStyle(borderTableStyle: string): ?string;
   getHeight(): ?number;
-  canInsertTab(): true;
   collapseAtStart(): true;
 }
 declare function $createTableRowNode(): TableRowNode;
@@ -135,6 +140,8 @@ export type Grid = {
   cells: Cells;
   columns: number;
   rows: number;
+  backgroundColorStyle: string;
+  borderTableStyle: string;
 };
 
 declare function applyTableHandlers(
@@ -161,6 +168,8 @@ declare function getCellFromTarget(node: Node): Cell | null;
 declare function $createTableNodeWithDimensions(
   rowCount: number,
   columnCount: number,
+  backgroundColorStyle: string,
+  borderTableStyle: string,
   includeHeaders?: boolean,
 ): TableNode;
 
@@ -183,6 +192,10 @@ declare function $getTableRowIndexFromTableCellNode(
 declare function $getTableColumnIndexFromTableCellNode(
   tableCellNode: TableCellNode,
 ): number;
+
+declare function $getTableCellSiblingsFromTableCellNode(
+  tableCellNode: TableCellNode,
+): TableCellNode;
 
 declare function $removeTableRowAtIndex(
   tableNode: TableNode,
@@ -238,4 +251,6 @@ export declare class TableSelection {
 export var INSERT_TABLE_COMMAND: LexicalCommand<{
   rows: string;
   columns: string;
+  backgroundColorStyle: string;
+  borderTableStyle: string;
 }>;
